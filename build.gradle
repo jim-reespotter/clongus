@@ -1,0 +1,86 @@
+plugins {
+	id 'org.springframework.boot' version '2.6.6'
+	id 'io.spring.dependency-management' version '1.0.11.RELEASE'
+	id 'java'
+	id 'maven-publish'
+	// gradle publishToMavenLocal
+}
+
+group = 'mash.pies.syncthing'
+version = '0.0.1-SNAPSHOT'
+sourceCompatibility = '11'
+
+publishing {
+    publications {
+        library(MavenPublication) {
+            from components.java
+        }
+    }
+    repositories {
+        maven {
+            url "https://gitlab.com/api/v4/projects/40728361/packages/maven"
+            credentials(HttpHeaderCredentials) {
+                name = "Deploy-Token"
+                value = gitlabDeployToken // the token is stored in ~/.gradle/gradle.properties
+            }
+            authentication {
+                header(HttpHeaderAuthentication)
+            }
+        }
+    }
+}
+
+repositories {
+	mavenCentral()
+    /*
+	maven {
+        url "https://gitlab.com/api/v4/groups/59827980/-/packages/maven"
+        name "GitLab"
+        credentials(HttpHeaderCredentials) {
+            name = 'Deploy-Token'
+            value = gitlabDeployToken
+        }
+        authentication {
+            header(HttpHeaderAuthentication)
+        }
+    }
+    */
+}
+
+dependencies {
+//	implementation 'org.springframework.boot:spring-boot-starter'
+//	implementation project(':configs')
+//	implementation 'mash.pies.syncthing:config:0.0.1-SNAPSHOT'
+
+	implementation 'org.yaml:snakeyaml:1.30'
+	implementation 'org.ldaptive:ldaptive:2.1.0'
+	implementation 'org.mariadb.jdbc:mariadb-java-client:3.0.4'
+	implementation 'org.springframework.data:spring-data-mongodb:3.4.0'
+	implementation 'com.fasterxml.jackson.core:jackson-annotations'
+
+
+	implementation 'org.apache.logging.log4j:log4j-core'
+	implementation 'org.apache.logging.log4j:log4j-api'
+
+	implementation 'com.google.api-client:google-api-client:2.0.0'
+//	implementation 'com.google.oauth-client:google-oauth-client:1.34.1'
+	implementation 'com.google.auth:google-auth-library-oauth2-http:1.10.0'
+
+    implementation 'com.google.apis:google-api-services-admin-directory:directory_v1-rev62-1.21.0'
+
+	testImplementation 'org.junit.jupiter:junit-jupiter-engine'
+	testImplementation 'junit:junit'
+	testImplementation 'io.github.hakky54:logcaptor:2.7.10'
+	
+//	testImplementation "org.mockito:mockito-core"
+
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+	testImplementation 'org.springframework.boot:spring-boot-starter-data-ldap'
+	testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+	testImplementation 'com.h2database:h2'
+}
+
+tasks.named('test') {
+	useJUnitPlatform()
+}
+

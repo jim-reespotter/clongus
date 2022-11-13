@@ -1,0 +1,92 @@
+##
+## Task to create new calendar objects in SQL from AD Department groups.
+##
+---
+SQLCalendar:
+##
+## Defines an LDAP connection (certificate is currently ignored)
+##
+- connection: &LDAP_RP
+    !LdapConnection
+    name: AD_LDAP
+    description: Connection to LDAP
+    url: ldaps://192.168.0.35
+    credential:
+      username: CN=sta_ldap,OU=testingStuff,DC=stuff,DC=things
+      password: asdf345SDFg
+    baseDN: DC=stuff,DC=things
+
+##
+## Defines an LDAP query to reference all group objects from specific OU
+##
+- query: &ADDepartments
+    !LdapObjectQuery
+    name: AD_groups_departments
+    description: Read-write access to manage groups in departments OU
+    connection: *LDAP_RP
+    subOU: OU=groups,OU=testingStuff
+    filter: (objectClass=group)
+    scope: one
+
+##
+## Defines a connection to a SQL database
+##
+- connection: &MariaDB
+    !SQLConnection
+    name: SQL calendar database
+    description: Database of calendars, events, subscriptions
+    url: jdbc:mariadb://localhost:3306/sta
+    credential:
+      username: sta
+      password: sta
+
+##
+## Defines a SQL query to reference a table
+##
+- query: &SQLCalendars
+    !SQLQuery
+    name: SQL Calendars
+    description: table of calendars
+    connection: *MariaDB
+    table: calendars
+    primaryKeyFields:
+    - id
+
+##
+## Defines a task that will update SQL table based on the contents on the LDAP OU:
+##
+- task:
+    !SimpleTask
+    name: Departments_create_HR_AD
+    description: Manage AD groups for departments
+    ## The queries (from above)
+    ## source is read only, target may be updated
+    source: 
+      query: *ADDepartments
+    target: 
+      query: *SQLCalendars
+    ## algorithm to match LDAP groups to records in the calendars table:
+    matchers:
+    - !RegexMatcher
+      name: match_name
+      sourceSignature:
+        attributes: 
+        - name
+      targetSignature:
+        attributes: 
+        - subject
+    ## Attributes to set:
+    attributes:
+    - !CopyAttribute
+      attribute: subject
+      source: cn
+    - !RegexAttribute ## will only be used if LDAP group's sAMAccountName doesn't end in an 's'
+      attribute: ref
+      sources:
+      - sAMAccountName
+      pattern: s/(\w+\s?\w*[^s])$/$1 is on its own/
+    - !RegexAttribute ## will only be used if LDAP group's sAMAccountName does end in an 's'
+      attribute: ref
+      sources:
+      - sAMAccountName
+      pattern: s/(\w+\s?\w*s)$/$1 are legion/

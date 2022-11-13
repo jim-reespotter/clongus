@@ -1,0 +1,83 @@
+##
+## Task to create new department groups.
+##
+---
+ADGroupMaintenance:
+- connection: &HRFiles
+    !FileConnection
+    name: HR_files
+    description: file location for HR files
+    path: configs/
+
+- connection: &LDAP_RP
+    !LdapConnection
+    name: AD_LDAP
+    description: Connection to LDAP
+    url: ldaps://192.168.0.35
+    credential:
+      username: CN=sta_ldap,OU=testingStuff,DC=stuff,DC=things
+      password: asdf345SDFg
+    baseDN: DC=stuff,DC=things
+
+#queries:
+- query: &HRDepartments
+    !CsvQuery
+    name: HR_departments
+    description: Read only CSV file of all employees
+    connection: *HRFiles
+    filename: departments.csv
+    headers: no
+    fields:
+    - name: departmentName
+
+- query: &ADDepartments
+    !LdapObjectQuery
+    name: AD_groups_departments
+    description: Read-write access to manage groups in departments OU
+    connection: *LDAP_RP
+    subOU: OU=departments,OU=groups,OU=testingStuff
+    filter: (objectClass=group)
+    scope: one
+
+#tasks:
+- task:
+    !SimpleTask
+    name: Departments_create_HR_AD
+    description: Manage AD groups for departments
+    source: 
+      query: *HRDepartments
+    target: 
+      query: *ADDepartments
+    matchers:
+    - !RegexMatcher
+      name: match_name
+      sourceSignature:
+        attributes: 
+        - departmentName
+      targetSignature:
+        attributes: 
+        - name
+   
+    filters:
+
+    attributes:
+    - !RegexAttribute
+      attribute: distinguishedName
+      sources: 
+      - departmentName
+      pattern: s/(.+)/CN=$1,OU=departments,OU=groups,OU=testingStuff/
+
+    - !LiteralAttribute
+      attribute: objectClass
+      values: 
+      - top
+      - group
+
+    - !CopyAttribute
+      attribute: name
+      source: departmentName
+      caseSensitive: false
+
+    - !CopyAttribute
+      attribute: sAMAccountName
+      source: departmentName

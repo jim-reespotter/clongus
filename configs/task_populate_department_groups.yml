@@ -1,0 +1,165 @@
+##
+## Task to manage group membership.
+##
+## This runs a query to get a list of groups to deal with, then runs a subtask to ensure membership for each of these groups.
+##
+---
+ADDepartmentMembershipManagement:
+##
+## Defines a filesystem
+##
+- connection: &HRFiles
+    !FileConnection
+    name: HR_files
+    description: file location for HR files
+    path: configs/
+
+##
+## Defines a CSV file containing user details
+## 
+- query: &HREmployees
+    !CsvQuery
+    name: HR_Employees
+    description: CSV file of employees
+    connection: *HRFiles
+    filename: employees.csv
+    headers: no
+    fields:
+    - name: employeeID
+    - name: firstname
+    - name: surname
+    - name: startDate
+    - name: endDate
+    - name: department
+    - name: role
+
+##
+##  Defines an LDAP connection
+##
+- connection: &LDAP_RP
+    !LdapConnection
+    name: AD_LDAP
+    description: Connection to LDAP
+    url: ldaps://192.168.0.35
+    credential:
+      username: CN=sta_ldap,OU=testingStuff,DC=stuff,DC=things
+      password: asdf345SDFg
+    baseDN: DC=stuff,DC=things
+
+##
+## Defines an LDAP query to reference all user objects from specific OU
+##
+- query: &ADEmployees
+    !LdapObjectQuery
+    name: AD_users_employees
+    description: Read-write access to manage users in employee OU
+    connection: *LDAP_RP
+    subOU: OU=test employees,OU=testingStuff
+    filter: (objectClass=user)
+    scope: sub
+
+##
+## Defines a query that returns only the users in a specific group
+##
+- query: &UsersByGroup
+    !MatchQuery
+    source: 
+      query: *HREmployees
+      send: 
+      - department      ## this is a filter - we're only interested in records with a specific department set
+    target: 
+      query: *ADEmployees
+    matchers:
+    - !RegexMatcher
+      name: match employeeid
+      sourceSignature:
+        attributes: 
+        - employeeID
+      targetSignature:  
+        attributes: 
+        - employeeID
+
+##
+## Defines an LDAP query to reference all group objects from specific OU
+##
+- query: &ADDeptGroups
+    ## LDAP lookup
+    !LdapObjectQuery
+    name: AD_department_groups
+    connection: *LDAP_RP
+    subOU: OU=departments,ou=groups,OU=testingStuff
+    filter: (objectClass=group)
+    scope: sub
+
+##
+## Defines an LDAP query that returns all values of a specific attribute from a specific object
+##
+- query: &GroupMembers
+    !LdapAttributeQuery
+    name: group members
+    connection: *LDAP_RP
+    ou: OU=departments,OU=groups,OU=testingStuff
+    attribute: member
+ 
+- task:
+    !ForEachTask
+    name: manage department group membership - iterate through all groups, check membership
+    forEach:
+      ## This query 
+      query: *ADDeptGroups
+      ## For each group found, only return cn and distinguishedName (but release them as 'dn', 'department' and 'target')
+      release:      
+        dn: distinguishedName
+        department: cn
+        ## predefined param for LdapAttributeQuery stating details of where to write changes
+        target: distinguishedName
+
+    ## Tasks to run. Each task will be run with the above group object passed in as a filter
+    subtasks:
+    - !SimpleTask
+      name: update group membership
+
+
+      source: 
+        query: *UsersByGroup
+        send:
+        - department
+        ## Release values from the target object (without 'target' prefix, source values are released)
+        release:
+          member: target.distinguishedName
+          name: target.name
+          dn: target.distinguishedName
+
+      ## This is the values of the 'member' attribute of the named group object
+      target: 
+        query: *GroupMembers
+        send: 
+        - dn
+
+      ## a match is when a user's DN is already present in the LDAP group object's member attribute
+      matchers:
+      - !RegexMatcher
+        name: match_DNs
+        sourceSignature:
+          attributes: 
+          - member
+        targetSignature:
+          attributes: 
+          - member
+
+      ## Actions - add or remove entry
+      attributes:
+      - !CopyAttribute
+        attribute: member
+        source: member
+        updateOption: APPEND   ## multi values attribute, add another value
+        conditions:
+        - CREATE
+
+      - !CopyAttribute
+        attribute: member
+        source: member
+        updateOption: REMOVE   ## multi values attribute, only remove the specific value
+        conditions:
+        - REMOVE
+
