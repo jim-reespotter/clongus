@@ -18,12 +18,12 @@ Clongus is a tool for synchronising data sources. It differs from other tools in
 
 ## Documentation
 
-- [Concepts]([Concepts](https://github.com/jim-reespotter/clongus/wiki/Concepts))
-- [Recipe structure - YAML]([yaml](https://github.com/jim-reespotter/clongus/wiki/yaml))
+- [Concepts](https://github.com/jim-reespotter/clongus/wiki/Concepts)
+- [Recipe structure - YAML]([yaml](https://github.com/jim-reespotter/clongus/wiki/yaml)
 - recipe fragments:
-  - [Connections]([Connections](https://github.com/jim-reespotter/clongus/wiki/Connections))
-  - [Queries]([Queries](https://github.com/jim-reespotter/clongus/wiki/Queries))
-  - [Matchers]([Matchers](https://github.com/jim-reespotter/clongus/wiki/Matchers))
-  - [Value generators]([ValueGenerators](https://github.com/jim-reespotter/clongus/wiki/ValueGenerators))
-- [Sample recipes]([SampleRecipes](https://github.com/jim-reespotter/clongus/wiki/SampleRecipes))
+  - [Connections](https://github.com/jim-reespotter/clongus/wiki/Connections)
+  - [Queries](https://github.com/jim-reespotter/clongus/wiki/Queries)
+  - [Matchers](https://github.com/jim-reespotter/clongus/wiki/Matchers)
+  - [Value generators](https://github.com/jim-reespotter/clongus/wiki/ValueGenerators)
+- [Sample recipes](https://github.com/jim-reespotter/clongus/wiki/SampleRecipes)
 - [Running Clongus](https://github.com/jim-reespotter/clongus/wiki/RunningClongus)
