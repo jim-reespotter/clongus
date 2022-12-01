@@ -15,16 +15,16 @@ public class AttributeValueMatcherRule extends MatcherRule<AttributeValueSignatu
     public void setCaseSensitive(boolean caseSensitive) {
         this.caseSensitive = caseSensitive;
         if (sourceSignature != null) 
-            sourceSignature.withCaseSensitive(caseSensitive);
+            sourceSignature.setCaseSensitive(caseSensitive);
         if (targetSignature != null)
-            targetSignature.withCaseSensitive(caseSensitive);
+            targetSignature.setCaseSensitive(caseSensitive);
     }
     
     public String getSourceAttribute() {
         return sourceSignature.getAttributeName();
     }
     public void setSourceAttribute(String sourceAttribute) {
-        sourceSignature.withAttributeName(sourceAttribute);
+        sourceSignature.setAttributeName(sourceAttribute);
     }
 
     public String getTargetAttribute() {
@@ -32,11 +32,13 @@ public class AttributeValueMatcherRule extends MatcherRule<AttributeValueSignatu
     }
 
     public void setTargetAttribute(String targetAttribute) {
-        targetSignature.withAttributeName(targetAttribute);
+        targetSignature.setAttributeName(targetAttribute);
     }
 
     public AttributeValueMatcherRule withTargetAttribute (String targetAttribute) {
-        targetSignature = new AttributeValueSignatureGenerator().withAttributeName(targetAttribute).withCaseSensitive(caseSensitive);
+        targetSignature = new AttributeValueSignatureGenerator();
+        targetSignature.setAttributeName(targetAttribute);
+        targetSignature.setCaseSensitive(caseSensitive);
         return this;
     }
 

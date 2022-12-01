@@ -1,33 +1,31 @@
+## Task to create new employees. Users will be created as soon as they are seen in HR, but are disabled.
 ##
-## Task to create new user objects in LDAP from a CSV file
+## Other tasks will:
+## - Set account active
+## - Change name, cn, dn
+## - mamage groups
+## - mothball account when user leaves
+## - delete account 6 monhts later
 ##
 ---
 ADUserMaintenance:
-##
-## Defines a filesystem
-##
 - connection: &HRFiles
     !FileConnection
     name: HR_files
     description: file location for HR files
     path: configs/
 
-##
-##  Defines an LDAP connection
-##
 - connection: &LDAP_RP
     !LdapConnection
     name: AD_LDAP
-    description: Connection to LDAP
-    url: ldaps://192.168.0.35
+    description: Connection to resspotter.home DC
+    url: ldaps://192.168.0.3
+    cert: xxx
     credential:
-      username: CN=sta_ldap,OU=testingStuff,DC=stuff,DC=things
-      password: asdf345SDFg
-    baseDN: DC=stuff,DC=things
+      username: CN=sta_ldap,OU=testingStuff,DC=reespotter,DC=home
+      password: asdf345SDFg345SD
+    baseDN: DC=reespotter,DC=home
 
-##
-## Defines a CSV file
-## 
 - query: &HREmployees
     !CsvQuery
     name: HR_Employees
@@ -35,6 +33,7 @@ ADUserMaintenance:
     connection: *HRFiles
     filename: employees.csv
     headers: no
+#    file: (fileName)
     fields:
     - name: employeeID
       type: caseInsensitiveString
@@ -44,14 +43,23 @@ ADUserMaintenance:
       type: caseSensitiveString
     - name: startDate
       type: date
+##      format: YYYY-mm-dd
     - name: endDate
       type: date
+##      format: YYYY-mm-dd
     - name: department
+##      format: CaseInsensitiveString
     - name: role
+##      format: CaseInsensitiveString
+#    identifier:
+#      attributes:
+#      - firstname
+#      - surname
+#      - employeeID
+#      pattern: /(.+):(.+):(.+)/$1 $2 ($3)/
 
-##
-## Defines an LDAP query to reference all user objects from specific OU
-##
+    ## optional means of describing - eg: firstname surname empID -> regex $1 $2 ($3)
+    ## something similar for all queries? Apps through for matchedQus?
 - query: &ADEmployees
     !LdapObjectQuery
     ## LDAP lookup
@@ -61,36 +69,45 @@ ADUserMaintenance:
     #    subOU: OU=test employees,OU=testingStuff
     subOU: OU=testingStuff
     filter: (&(objectClass=user)(!(sAMAccountName=STA_LDAP)))
-    scope: sub
+    scope: SUBTREE
+#    identifier:
+#      attributes:
+#      - displayName
+#      - employeeID
+#      pattern: /(.+):(.+)/$1 ($2)/
 
-##
-## Defines a task that will create/update/remove user objects in LDAP
-##
 - task:
     !SimpleTask
     name: emplyees_create_HR_AD
     description: create AD accounts for missing employees. Account will be disabled until start date
   
-    ## source and target connections (read from source, write to target):
+    ## source and target connections:
     source: 
       query: *HREmployees
     target: 
       query: *ADEmployees
 
-    ## Algorithm to match source users to target users:
     matchers:
+    - !AttributeValueMatcher
+      name: Match employee IDs
+      sourceSignature:
+        attributeName: payrollNumber
+      targetSignature:
+        attributeName: employeeID     
+
     - !RegexMatcher
       name: match_employeeID
-      description: Plan A - match unique employee IDs (must be unique in source and target)
+      ## TO DO: add equals type
       sourceSignature:
         attributes: 
         - employeeID
       targetSignature:
         attributes: 
         - employeeID
+      ## TO DO: make this do something
+
     - !RegexMatcher
-      name: Match and last name
-      description: Plan B - if employee ID matching doesn't match all users, try to match unique first/last names on any remaining unmatched user objects
+      name: Match first and last name
       sourceSignature:
         attributes:
         - firstname
@@ -100,74 +117,91 @@ ADUserMaintenance:
           - givenName
           - sn
       
-    ## work in progress...
+    ## should state source or target I think (source by default?)... so also targetAttributes
+    ## delimiter? default? set alt
+    ## TO DO: fails (NPE) if list empty...
     filters:
+    #- name: left date hasnt happened yet
+    #  sourceAttributes: endDate
+    #  comparator: lessThan
+    #  value: today
+    - name: only create and update
+      actions:
+      - CREATE
+      - UPDATE
   
-    ## Set these values for LDAP users:
+    ## these are the values for each attribute for the new target thing:
     attributes:
     - !RegexAttribute
-      ## Example: Fred Bloggs (employee ID 1234) will have dn 'Fred Bloggs (1234)'.
       attribute: distinguishedName
       sources: 
       - employeeID
       - firstname
       - surname
-      # relative to connection, not query
+      # relative to connection, not query (so you can move up from wuery)
       pattern: s/(.*):(.*):(.*)/CN=$2 $3 ($1),OU=test employees,OU=testingStuff/
       conditions:
       - CREATE
       - UPDATE
 
+## mothball the account - move to ex employees
     - !RegexAttribute
-      ## mothball the account - move to ex employees (do not just delete it)
       attribute: distinguishedName
+      ## these are target attributes...
       sources: 
       - cn
-      # relative to connection, not query
+      # relative to connection, not query (so you can move up from wuery)
       pattern: s/(.+)/CN=$1,OU=ex employees,OU=testingStuff/
       conditions:
       - REMOVE
 
     - !LiteralAttribute
-      ## Set the objectClass to specific values
       attribute: objectClass
+  #    action: append  !! TO DO: fix matching, multi things (there's an enum in ldaptive to copy maybe?) !!
       values: 
       - user
       - top
       - person
       - organizationalPerson
-
+      # possibly need a flag to say order does not matter?
+  #  - attribute: cn !! For AD, don't change CN, change DN instead !!
+  #    type: regex
+  #    sources: 
+  #      - firstname
+  #    - surname
+  #    - employeeID
+  #    pattern: s/(.*):(.*):(.*)/$1 $2 ($3)/
+  ##      delimiter: ':' default value!
     - !RegexAttribute
       attribute: displayName
       sources: 
       - firstname
       - surname
       pattern: s/(.*):(.*)/$1 $2/
-
     - !CopyAttribute
       attribute: sn
       source: surname
-
     - !CopyAttribute
       attribute: givenName
       source: firstname
-
+      conditions:
+      - CREATE
+      - UPDATE
     - !CopyAttribute
       attribute: employeeID
       source: employeeID
-
     - !RegexAttribute
-      ## eg Fredd Bloggs (employee ID 1234) will have samAccountName 1223FB
       attribute: sAMAccountName
       sources: 
       - employeeID
       - firstname
       - surname
       pattern: s/(\w+):(\w)\w*:(\w).+/$1$2$3/
-      ## If a user changes their name, do not update this field
       conditions:
       - CREATE
-
+#  - attribute: bitField
+#    bit: 5
+#    bitValue: true
     - !RegexAttribute
       attribute: department
       sources: 
@@ -176,9 +210,24 @@ ADUserMaintenance:
       conditions:
       - CREATE
       - UPDATE
+## why doesn';t this work?
+#    - !RegexAttribute
+#      attribute: department
+#      sources: 
+#      - department
+#      pattern: s/(\w+)/out on arse/
+#      conditions:
+#      - REMOVE
+#    - !LiteralAttribute
+#      attribute: department
+#      values:
+#      - none
+#      ## not honouring this:
+#    #  updateOption: CLEAR
+#      conditions:
+#      - REMOVE
 
     - !RandomAttribute
-      ## Generate a random password
       attribute: userPassword
       conditions:
       - CREATE
@@ -187,4 +236,8 @@ ADUserMaintenance:
       - abcde
       - ABCDE
       - 12345
+#    - !BitwiseAttribute
+#      attribute: userAccountControl
+#      set:
+#        6: true
         

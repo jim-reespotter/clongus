@@ -9,8 +9,9 @@ import java.util.Set;
 import org.springframework.data.mongodb.core.mapping.DBRef;
 
 import mash.pies.syncthing.engine.processors.Entity;
+import mash.pies.syncthing.engine.processors.LogBase;
 
-public class QuerySpec {
+public class QuerySpec extends LogBase {
 
     @DBRef
     private Query query;
@@ -60,14 +61,17 @@ public class QuerySpec {
     public Collection<Entity> execute(Map<String, String> filters) throws Exception {
 
         Map<String, String> sendFilter = new HashMap<String, String>();
-        if (send != null)
+        if (send != null) //think this should be a combination of filters and send?
             for (String key : send)
-                if (filters.containsKey(key))
+                if (filters.containsKey(key)) {
                     sendFilter.put(key, filters.get(key));
+                    trace("Applying filter: "+key+" => "+filters.get(key));
+                }
 
         Collection<Entity> qResult = getQuery().read(sendFilter);
 
         if (release != null) {
+            trace("Renaming attributes:");
             Set<Entity> output = new HashSet<Entity>();
 
             // make a new entity here:
@@ -76,6 +80,7 @@ public class QuerySpec {
                 for (String t : release.keySet()) {
                     Object val = release.get(t);
                     newEntity.put(t, e.get(val));
+                    trace("setting attribute "+t+" => "+e.get(val));
                 }
 
                 output.add(newEntity);

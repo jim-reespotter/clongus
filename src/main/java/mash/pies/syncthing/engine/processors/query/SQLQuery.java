@@ -9,8 +9,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 import mash.pies.syncthing.engine.processors.Entity;
 import mash.pies.syncthing.engine.processors.change.ChangeCommandGenerator;
@@ -19,7 +17,7 @@ import mash.pies.syncthing.engine.processors.connection.SQLConnection;
 
 public class SQLQuery extends ConnectionQuery {
 
-    static Logger logger = LogManager.getLogger();
+//    static Logger logger = LogManager.getLogger();
 
     private String table;
     private String[] primaryKeyFields;
@@ -47,7 +45,7 @@ public class SQLQuery extends ConnectionQuery {
         sql = "SELECT * FROM "+getTable();
         stmt = connection.getSQLConnection().prepareStatement(sql);
 
-        logger.debug("SQL Query - running: {}", sql);
+        debug("SQL Query - running: "+ sql);
 
         ResultSet rs = stmt.executeQuery();
         ResultSetMetaData rsm = rs.getMetaData();
@@ -58,15 +56,16 @@ public class SQLQuery extends ConnectionQuery {
         Set<Entity> results = new HashSet<Entity> ();
 
         while (rs.next()) {
+            trace("Read row: "+rs.toString());
             Entity e = new Entity();
             for (String column : columns)
                 e.put(column, rs.getObject(column));
             results.add(e);
-//            logger.trace("SQL QUery - read '{}' to entity", getIdentifier(e));
+            trace("imported "+ e);
         }
 
         rs.close();
-        logger.debug("SQL Query - loaded {} entities", results.size());
+    
         return results;
     }
 

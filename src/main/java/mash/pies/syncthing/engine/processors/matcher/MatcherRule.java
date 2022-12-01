@@ -7,9 +7,6 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
 import mash.pies.syncthing.engine.processors.Entity;
 import mash.pies.syncthing.engine.processors.ProcessorBase;
 
@@ -31,7 +28,7 @@ public abstract class MatcherRule<T extends SignatureGenerator> extends Processo
   public T getTargetSignature() {return targetSignature;}
   public void setTargetSignature(T targetSig) {this.targetSignature = targetSig;}
 
-  static Logger logger = LogManager.getLogger();
+//  static Logger logger = LogManager.getLogger();
 
     /**
    * retrieve a list of all UNIQUE signatures for our collection of given Entities
@@ -53,9 +50,9 @@ public abstract class MatcherRule<T extends SignatureGenerator> extends Processo
       if (sig != null)
         if (!result.keySet().contains(sig))
           result.put(sig, e);
-        else
+        else {
           result.put(sig, null); // we've already got an entity with the same sig - they need to be unique, so
-                               // flag this with null value:
+        }                       // flag this with null value:
     } 
 
     // find all sigs with null value (null because they aren't unique) and remove
@@ -65,6 +62,8 @@ public abstract class MatcherRule<T extends SignatureGenerator> extends Processo
       Signature s = iter.next();
       if (result.get(s) == null)
         iter.remove();
+      else
+        getLogger().trace("Signature for "+ result.get(s) +" : "+s);
     }
     return result;
   }
@@ -88,17 +87,13 @@ public abstract class MatcherRule<T extends SignatureGenerator> extends Processo
    */
   public Collection<MatchedEntity> findMatches(Collection<Entity> sourceEntities, Collection<Entity> targetEntities) {
     
-    logger.trace("Running matcher rule {}", getName());
-
     Set<MatchedEntity> matches = new HashSet<MatchedEntity>();
 
+    trace("Running matcher rule " + getName());
+    trace("Source signatures:");
     Map<Signature, Entity> sourceSigMap = getSignatures(sourceEntities, sourceSignature);
+    trace("target signatures:");
     Map<Signature, Entity> targetSigMap = getSignatures(targetEntities, targetSignature);
-
-    logger.trace("Sources - generated {} unique signatures from {} entities", sourceSigMap.size(),
-        sourceEntities.size());
-    logger.trace("Targets - generated {} unique signatures from {} entities", targetSigMap.size(),
-        targetEntities.size());
 
     Iterator<Signature> srcIter = sourceSigMap.keySet().iterator();
     while (srcIter.hasNext()) {
@@ -109,7 +104,7 @@ public abstract class MatcherRule<T extends SignatureGenerator> extends Processo
         Signature tgtSig = tgtIter.next();
 
         if (isMatch(srcSig, tgtSig)) {
-          logger.debug("Found unique match: " + srcSig.getSignature());
+          trace("Found unique match: " + srcSig.getSignature());
 
           // remove from unmatched sets:
           sourceEntities.remove(sourceSigMap.get(srcSig));
@@ -128,7 +123,7 @@ public abstract class MatcherRule<T extends SignatureGenerator> extends Processo
       }
     }
 
-    logger.trace("made {} matches.", matches.size());
+    
 
     return matches;
   }

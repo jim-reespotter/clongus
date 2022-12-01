@@ -21,14 +21,17 @@ public class Filter extends ProcessorBase {
     }
 
     public Collection<Entity> filterCreateEntites(Collection<Entity> sourceEntities) {
+        trace("Filter entities to create (to do)");
         return sourceEntities;
     }
 
     public Collection<Entity> filterRemoveEntities(Collection<Entity> targetEntities) {
+        trace("Filter entities to update (to do)");
         return targetEntities;
     }
 
     public Collection<MatchedEntity> filterUpdateEntities(Collection<MatchedEntity> matchedEntities) {
+        trace("Filter entities to remove (to do)");
         return matchedEntities;
     }
 }

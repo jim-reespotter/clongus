@@ -1,0 +1,126 @@
+##
+## tasks:
+##
+#- task:
+#    !SimpleTask
+#    name: Departments_create_HR_PS
+#    description: Manage AD groups for departments
+## TO DO: add an option to disable a task
+#    source: 
+#      query: *HRDepartments
+#    target: 
+#      query: *PowershellDepartments
+#    matchers:
+#    - !RegexMatcher
+#      name: match_name
+#      sourceSignature:
+#        attributes: 
+#        - departmentName
+#      targetSignature:
+#        attributes: 
+#        - name
+#   
+#    filters:
+#
+#    attributes:
+#    - !CopyAttribute
+#      attribute: name
+#      source: departmentName
+#      caseSensitive: false
+
+- task:
+    !SimpleTask
+    name: Departments_create_AD_Google
+    description: Copy AD groups to google
+    source: 
+      query: *ADDepartments
+    target: 
+      query: *GoogleGroups
+    matchers:
+    - !AttributeValueMatcher
+      name: match_name
+      sourceAttribute: name
+      targetAttribute: name
+    - !RegexMatcher
+      name: match_name_regex
+      sourceSignature:
+        attributes: 
+        - departmentName
+      targetSignature:
+        attributes: 
+        - name
+    filters:
+    - name: only create and update
+      actions:
+      - CREATE
+      - UPDATE
+    attributes:
+    - !RegexAttribute
+      attribute: email
+      sources: 
+      - cn
+      pattern: s/^(\w+)$/$1@sebet.org.uk/
+    - !RegexAttribute
+      attribute: email
+      sources: 
+      - cn
+      pattern: s/^(\w+)\s(\w+)$/$1$2@sebet.org.uk/
+    - !RegexAttribute
+      attribute: email
+      sources: 
+      - cn
+      pattern: s/^(\w+)\s(\w+)\s(\w+)$/$1$2$3@sebet.org.uk/
+    - !CopyAttribute
+      attribute: name
+      source: cn
+      caseSensitive: true
+
+- task:
+    !SimpleTask
+    name: Departments_create_HR_AD
+    description: Manage AD groups for departments
+    source: 
+      query: *ADDepartments
+    target: 
+      query: *SQLCalendars
+##  action: CREATE
+#    ## series of pattern to try to match things in source with things in target 
+    matchers:
+    - !RegexMatcher
+      name: match_name
+#      !regexMatcher
+      sourceSignature:
+        attributes: 
+        - name
+      targetSignature:
+        attributes: 
+        - subject
+#      condition: caseInsensitiveExactMatch
+   
+  ## should state source or target I think (source by default?)... so also targetAttributes
+  ## delimiter? default? set alt
+ #   filters:
+#  #- name: left date hasnt happened yet
+#  #  sourceAttributes: endDate
+#  #  comparator: lessThan
+#  #  value: today
+  #  - name: only create and update
+   #   actions:
+    #  - CREATE
+     # - UPDATE
+#  
+#  ## these are the values for each attribute for the new target thing:
+    attributes:
+    - !CopyAttribute
+      attribute: subject
+      source: cn
+    - !RegexAttribute
+      attribute: ref
+      sources:
+      - sAMAccountName
+      pattern: s/(\w+\s?\w*[^s])$/$1 is on its own/
+    - !RegexAttribute
+      attribute: ref
+      sources:
+      - sAMAccountName
+      pattern: s/(\w+\s?\w*s)$/$1 are legion/

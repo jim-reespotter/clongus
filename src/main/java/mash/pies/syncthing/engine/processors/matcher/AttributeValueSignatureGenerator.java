@@ -6,12 +6,12 @@ public class AttributeValueSignatureGenerator implements SignatureGenerator {
     // TO DO: rename to AttributeStringSignatureGenerator?... (or rework to be byte[]?? matcher?)
 
     private String attributeName;
-    private boolean caseSensitive;
+    private boolean caseSensitive = true;
 
     public String getAttributeName() {return attributeName;}
-    public AttributeValueSignatureGenerator withAttributeName(String attributeName) {this.attributeName = attributeName; return this;}
+    public void setAttributeName(String attributeName) {this.attributeName = attributeName;}
     public boolean isCaseSensitive() {return caseSensitive;}
-    public AttributeValueSignatureGenerator withCaseSensitive(boolean caseSensitive) {this.caseSensitive = caseSensitive; return this;}
+    public void setCaseSensitive(boolean caseSensitive) {this.caseSensitive = caseSensitive;}
 
     @Override
     public StringSignature getSignature(Entity e) {

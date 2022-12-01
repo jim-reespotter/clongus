@@ -13,9 +13,6 @@ import mash.pies.syncthing.engine.processors.Entity;
 import mash.pies.syncthing.engine.processors.change.ChangeCommandGenerator;
 import mash.pies.syncthing.engine.processors.connection.FileConnection;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
 /**
  * Manages the reading and writing to/from CSV files (and variations)
  *
@@ -53,19 +50,14 @@ public class CsvQuery extends ConnectionQuery {
   public String getQuote() {return quote;}
   public void setQuote(String quote) {this.quote = quote;}
 
-  
-
-  static Logger logger = LogManager.getLogger();
-
-
-  @Override
+    @Override
   public Set<Entity> read(Map<String, String> params) throws IOException {  // catch this internally?
+
+    debug("Reading CSV entries from "+filename+ " with filter: "+params.toString());
     Set<Entity> entities = new HashSet<Entity>();
 
-    // TO DO: make input a stream provided by a Connection (streamConnection - incl file and REST connection vs SQLconnection)
     File csvFile = new File(
         getConnection().getPath() + "/" + getFilename());
-    logger.debug("CSV QUery - reading file: {}", csvFile.getName());
 
     BufferedReader br = new BufferedReader(new FileReader(csvFile));
 
@@ -74,7 +66,7 @@ public class CsvQuery extends ConnectionQuery {
 
     String line = br.readLine();
     for (; line != null; line = br.readLine()) {
-      logger.trace("processing line: " + line);
+      trace("processing line: " + line);
 
       try {
         Entity e = processRecord(line);
@@ -82,12 +74,16 @@ public class CsvQuery extends ConnectionQuery {
         // filter which records to return:
         if (params != null && params.size() > 0) {
           for (String key : params.keySet())
-            if (e.get(key).toString().equals(params.get(key)))
+            if (e.get(key).toString().equals(params.get(key))) {
               entities.add(e);
-        } else
+              trace("imported "+e.toString());  
+            }
+        } else {
           entities.add(e);
+          trace("imported "+e.toString());  
+        }
       } catch (ArrayIndexOutOfBoundsException e) {
-        logger.warn("Failed to read " + line);
+        warn("Failed to process " + getFilename() + "line: "+ line);
       }
     }
     br.close();
@@ -119,7 +115,7 @@ public class CsvQuery extends ConnectionQuery {
   public static class Field {
 
     private String name;
-    private String type;    //!! might cause REST issues! dataType instead?
+    private String type;    //!! might cause REST issues! dataType instead? 
     private String format;
 
     public Field() {}
@@ -135,6 +131,5 @@ public class CsvQuery extends ConnectionQuery {
     public void setType(String type) {this.type = type;}
     public String getFormat() {return format;}
     public void setFormat(String format) {this.format = format;}
-    
   }
 }

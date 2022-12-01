@@ -72,8 +72,10 @@ public class SQLChangeCommandGenerator extends ChangeCommandGenerator<SQLQuery> 
   class SQLChange implements ChangeCommand {
 
     private PreparedStatement stmt;
+    private String sql;
 
     SQLChange(String sqlQuery) throws SQLException {
+      sql = sqlQuery;
       this.stmt =
         getQuery()
           .getConnection()
@@ -89,7 +91,7 @@ public class SQLChangeCommandGenerator extends ChangeCommandGenerator<SQLQuery> 
     @Override
     public String toString() {
       
-      return this.stmt.toString();
+      return this.sql;
     }
   }
 }

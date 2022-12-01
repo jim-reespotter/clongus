@@ -19,15 +19,10 @@ import org.ldaptive.ModifyOperation;
 import org.ldaptive.ModifyRequest;
 import org.ldaptive.handler.ResultPredicate;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
 /**
  * A processor to create LDAP Object change objects - create, update and delete
  */
 public class LdapObjectChangeCommandGenerator extends ChangeCommandGenerator<LdapObjectQuery> {
-
-  static Logger logger = LogManager.getLogger();
 
   public LdapObjectChangeCommandGenerator(
       LdapObjectQuery q,
@@ -110,10 +105,9 @@ public class LdapObjectChangeCommandGenerator extends ChangeCommandGenerator<Lda
       Map<String, ChangeValue> changes) {
     LdapObjectUpdateChange change = new LdapObjectUpdateChange(me, changes);
 
-    if (change.req == null && change.dnReq == null) {
-      logger.trace("no change required for {}", me.toString());
+    if (change.req == null && change.dnReq == null) 
       return null;
-    } else
+    else
       return change;
   }
 
@@ -142,7 +136,7 @@ public class LdapObjectChangeCommandGenerator extends ChangeCommandGenerator<Lda
 
       if (changeDN.equals(targetDN)) {
         changeDetails.remove("distinguishedName");
-        logger.trace("removed potential change of DN");
+  //      logger.trace("removed potential change of DN");
       } else {
         ModifyDnRequest.Builder dnBuilder = ModifyDnRequest
             .builder()

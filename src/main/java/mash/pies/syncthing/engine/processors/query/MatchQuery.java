@@ -33,12 +33,14 @@ public class MatchQuery extends Query {
     @Override
     protected Set<Entity> read(Map<String,String> params) throws Exception {
 
+        debug("Matcher query ("+getSource().getQuery().getName()+" vs "+getTarget().getQuery().getName()+") with filter: "+params.toString());
+
         Collection <Entity> sourceData = source.execute(params);
         Collection <Entity> targetData = target.execute(params);
 
         Set <MatchedEntity> matchedEntities = new Matcher(matchers).match(sourceData, targetData);
+        trace("Found "+matchedEntities.size()+" matches");
         
-        // why rebag it?
         return new HashSet<Entity>(matchedEntities);
     }
 

@@ -29,7 +29,7 @@ public class LdapAttributeQuery extends LdapQuery {
         
         SearchRequest searchRequest = SearchRequest.builder()
                 .scope(SearchScope.OBJECT)    
-                .dn(params.get("dn"))//+","+getConfig().getOu()) // +","+getConfig().getConnection().getBaseDN())
+                .dn(params.get("dn"))
                 .filter("(objectClass=*)")
             .build();
 

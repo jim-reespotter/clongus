@@ -3,6 +3,7 @@ package mash.pies.syncthing.engine.commandRunner;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -55,6 +56,9 @@ public class YamlFileReader {
         typeDefs.add(new TypeDescription(SQLQuery.class, "!SQLQuery"));
         typeDefs.add(new TypeDescription(MatchQuery.class, "!MatchQuery"));
         typeDefs.add(new TypeDescription(JsonQuery.class, "!JsonQuery"));
+        typeDefs.add(new TypeDescription(ReadWriteQuery.class, "!ReadWriteQuery"));
+        typeDefs.add(new TypeDescription(FileReadQuery.class, "!FileReadQuery"));
+        typeDefs.add(new TypeDescription(FileWriteQuery.class, "!FileWriteQuery"));
 
         typeDefs.add(new TypeDescription(SimpleTaskProcessor.class, "!SimpleTask"));
         typeDefs.add(new TypeDescription(ForEachTaskProcessor.class, "!ForEachTask"));
@@ -71,12 +75,10 @@ public class YamlFileReader {
         yaml = new Yaml(new Constructor(new TypeDescription(ConfigContainer.class), typeDefs));
     }
 
-    public void readFile(File file) throws Exception {
+    public void read(InputStream is) throws Exception {
 
-        System.out.println(file.getAbsolutePath());
-        FileInputStream fis = new FileInputStream(file);
-        ConfigContainer cData = yaml.load(fis);
-        fis.close();
+        ConfigContainer cData = yaml.load(is);
+        is.close();
 
         for (String itemName : cData.keySet())
             for (Object cfgMap : cData.get(itemName)) {

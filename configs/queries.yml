@@ -1,0 +1,65 @@
+##
+## Some queries:
+##
+#queries:
+- query: &HRDepartments
+    !CsvQuery
+    name: HR_departments
+    description: Read only CSV file of all employees
+    connection: *HRFiles
+    filename: departments.csv
+    headers: no
+    fields:
+    - name: departmentName
+
+- query: &PowershellDepartments
+    !ReadWriteQuery
+    name: readWriteQuery
+    read:
+      !FileReadQuery
+      name: FileRead
+      connection: *HRFiles
+      filename: newDepartments.csv
+      pattern: (.*)
+      fields:
+      - name: name
+    write:
+      !FileWriteQuery
+      name: FileWrite
+      connection: *HRFiles
+      filename: depts.ps
+      append: false
+      fields:
+      - name: name
+      createPattern: the new group is $1
+
+- query: &GoogleGroups
+    !JsonQuery
+    name: Google groups
+    connection: *GoogleWorkspace
+    subContext: admin/directory/v1/groups
+    subElement: groups
+
+- query: &O365Groups
+    !JsonQuery
+    name: Office365 Groups
+    connection: *Office365
+    subContext: groups
+
+- query: &ADDepartments
+    !LdapObjectQuery
+    name: AD_groups_departments
+    description: Read-write access to manage groups in departments OU
+    connection: *LDAP_RP
+    subOU: OU=groups,OU=testingStuff
+    filter: (objectClass=group)
+    scope: one
+
+- query: &SQLCalendars
+    !SQLQuery
+    name: SQL Calendars
+    description: table of calendars
+    connection: *MariaDB
+    table: calendars
+    primaryKeyFields:
+    - id

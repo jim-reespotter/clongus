@@ -6,7 +6,10 @@ import org.ldaptive.ConnectionFactory;
 import org.ldaptive.DefaultConnectionFactory;
 import org.ldaptive.ssl.AllowAnyTrustManager;
 import org.ldaptive.ssl.SslConfig;
+import org.slf4j.LoggerFactory;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
 
 /**
  * A connection to an LDAP directory
@@ -48,6 +51,13 @@ public class LdapConnection extends Connection {
             .build())
         .build();
         }
+        
+        // make ldaptive shut up...
+        Logger logger;;
+        logger = (Logger)LoggerFactory.getLogger("org.ldaptive");
+        logger.setLevel(Level.INFO);
+        logger = (Logger)LoggerFactory.getLogger("io.netty");
+        logger.setLevel(Level.INFO);
         
         return cf;
     }

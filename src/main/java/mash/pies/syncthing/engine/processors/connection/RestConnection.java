@@ -45,9 +45,7 @@ public class RestConnection extends Connection {
     public Map <String, String> getRequestParameters() {return requestParameters;}
     public void setRequestParameters(Map <String, String> params) {this.requestParameters = params;}
 
-    public String getType() {return "REST connection";}
-
-
+//    public String getType() {return "REST connection";}
 
     public static HttpTransport transport = new NetHttpTransport();
     public static JsonFactory json = new GsonFactory();
@@ -56,7 +54,6 @@ public class RestConnection extends Connection {
 //    private Instant expiry;
 
     private AccessToken accessToken;
-
 
     public AccessToken getAccessToken() throws IOException {
         if (accessToken == null || Date.from(Instant.now()).after(accessToken.getExpirationTime())) {

@@ -35,10 +35,11 @@ public class ForEachTaskProcessor extends TaskProcessor {
             params = new HashMap<String,String> ();
 
         Set<ChangeCommand> changes = new HashSet<ChangeCommand>();
-
         Collection<Entity> forEachEntities = forEach.execute(params);
-    
+        debug("Read "+forEachEntities.size()+" entities, running a sync task for each");
+
         for (Entity forEachEntity : forEachEntities) {
+            info("running sync task for "+forEachEntity.toString());
     
             Map <String,String> forEachParams = new HashMap<String,String> (params);
             for (String param : forEachEntity.keySet())

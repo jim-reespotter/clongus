@@ -91,7 +91,7 @@ public class RestChangeCommandGenerator extends ChangeCommandGenerator<JsonQuery
         }
 
         public String toString() {
-            return "Remove";
+            return "Remove " + obj.toString();
         }
    }
 

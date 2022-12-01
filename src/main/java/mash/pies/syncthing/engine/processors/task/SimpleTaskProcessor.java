@@ -7,9 +7,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import java.util.stream.Collectors;
 
 import mash.pies.syncthing.engine.processors.Entity;
 import mash.pies.syncthing.engine.processors.change.ChangeCommand;
@@ -47,10 +45,6 @@ public class SimpleTaskProcessor extends TaskProcessor {
     public List<AttributeValueGenerator> getAttributes() {return attributes;}
     public void setAttributes(List<AttributeValueGenerator> attributes) {this.attributes = attributes;}
 
-
-
-    static Logger logger = LogManager.getLogger();
-
     public Collection<ChangeCommand> generateChanges() throws Exception {
         return generateChanges(new HashMap<String, String>());
     }
@@ -65,41 +59,49 @@ public class SimpleTaskProcessor extends TaskProcessor {
      */
     public Collection<ChangeCommand> generateChanges(Map<String, String> params) throws Exception {
 
-        logger.debug("Starting task {} :", getName());
-
         Collection<Entity> sourceData = source.execute(params);
+        debug("Read "+sourceData.size()+" source entities from "+source.getQuery().getName());
         Collection<Entity> targetData = target.execute(params);
-        logger.debug("Found " + sourceData.size() + " source entities, " + targetData.size() + " target entities");
+        debug("Read "+targetData.size()+" target entities from "+target.getQuery().getName());
 
         Matcher matcher = new Matcher(matchers);
         Set<MatchedEntity> matches = matcher.match(sourceData, targetData);
 
-        logger.debug("Matched {} entites leaving {} unmatched sources and {} unmatched targets", matches.size(),
-                sourceData.size(), targetData.size());
+        debug("Finished matching - "+matches.size()+" entities matched, leaving "+sourceData.size()+" source and "+targetData.size()+" target entities unmatched");
 
         // TO DO: add a filter here?
         Filter filter = new Filter(filters);
 
         // Make changes:
+        
         Set<ChangeCommand> changes = new HashSet<ChangeCommand>();
-        ChangeCommandGenerator<?> ccg = target.getQuery().getChangeCommandGenerator(getAttributes(), params);
+        List<AttributeValueGenerator> avgs = getAttributes();
+        debug ("Attributes to check: "+ avgs.stream().map(AttributeValueGenerator::getAttribute).collect(Collectors.toList()));
+        ChangeCommandGenerator<?> ccg = target.getQuery().getChangeCommandGenerator(avgs, params);
 
         // creates:
-        for (Entity e : filter.filterCreateEntites(sourceData))
-            changes.add(ccg.getCreateChange(e));
+        for (Entity e : filter.filterCreateEntites(sourceData)) {
+            ChangeCommand c = ccg.getCreateChange(e);
+            debug("Create: "+c.toString());
+            changes.add(c);
+        }
         // updates:
         for (MatchedEntity e : filter.filterUpdateEntities(matches)) {
             ChangeCommand c = ccg.getUpdateChange((MatchedEntity) e);
-            if (c != null)
+            if (c != null) {
+                debug("update: "+c.toString());
                 changes.add(c);
+            }
         }
         // removes:
-        for (Entity e : filter.filterRemoveEntities(targetData))
-            changes.add(ccg.getRemoveChange(e));
-
+        for (Entity e : filter.filterRemoveEntities(targetData)) {
+            ChangeCommand c = ccg.getRemoveChange(e);
+            debug("Remove: "+c.toString());
+            changes.add(c);
+        }
         // changes.remove(null);
 
-        logger.debug("{} generated {} changes", getName(), changes.size());
+    debug("generated "+ changes.size()+" changes");
         return changes;
     }
 }

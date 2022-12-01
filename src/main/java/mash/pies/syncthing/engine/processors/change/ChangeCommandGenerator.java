@@ -5,21 +5,18 @@ import java.util.List;
 import java.util.Map;
 
 import mash.pies.syncthing.engine.processors.Entity;
+import mash.pies.syncthing.engine.processors.LogBase;
 import mash.pies.syncthing.engine.processors.change.valueGenerator.AttributeValueGenerator;
 import mash.pies.syncthing.engine.processors.change.valueGenerator.AttributeValueGenerator.Condition;
 import mash.pies.syncthing.engine.processors.matcher.MatchedEntity;
 import mash.pies.syncthing.engine.processors.query.Query;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 /**
  * Base class for datasource specific change command generators
  * 
  */
-public abstract class ChangeCommandGenerator<Q extends Query> {
-
-    static Logger logger = LogManager.getLogger();
+public abstract class ChangeCommandGenerator<Q extends Query> extends LogBase {
 
     private Q query;
     protected TargetValueGenerator tvg;
@@ -34,20 +31,24 @@ public abstract class ChangeCommandGenerator<Q extends Query> {
         return this.query;
     }
 
+    /**
+     * What do you reckon these do? I'm not sure...
+     * @return
+     */
     protected Map<String, String> getParams() {
         return this.params;
     }
 
     public ChangeCommand getCreateChange(Entity e) throws Exception {
 
-        logger.trace("Generating create change for {}", e.toString());
+        trace("Generating create change for "+ e.toString());
 
         return buildCreateChange(tvg.generateChange(e, Condition.CREATE));
     }
 
     public ChangeCommand getUpdateChange(MatchedEntity me) throws Exception {
 
-        logger.trace("Generating update change for {}", me.toString());
+        trace("Generating update change for "+ me.toString());
 
         Map<String, ChangeValue> changes = tvg.generateChange(me, Condition.UPDATE);
         if (changes.size() == 0)

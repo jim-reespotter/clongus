@@ -1,0 +1,113 @@
+GoogleUserMaintenance:
+- connection: &LDAP_RP
+    !LdapConnection
+    name: AD_LDAP
+    description: Connection to resspotter.home DC
+    url: ldaps://192.168.0.3
+    cert: xxx
+    credential:
+      username: CN=sta_ldap,OU=testingStuff,DC=reespotter,DC=home
+      password: asdf345SDFg345SD
+    baseDN: DC=reespotter,DC=home
+
+- query: &ADDepartments
+    ## TO DO: Should be objectQuery?
+    !LdapObjectQuery
+    name: AD_groups_departments
+    description: Read-write access to manage groups in departments OU
+    connection: *LDAP_RP
+    subOU: OU=departments,OU=groups,OU=testingStuff
+    filter: (objectClass=group)
+    scope: ONELEVEL
+
+- connection: &GoogleWorkspace
+    !RestConnection
+    name: GoogleWorkspace
+    serviceEndpoint: https://admin.googleapis.com/
+    authUrl: https://accounts.google.com/o/oauth2/auth
+    tokenUrl: https://accounts.google.com/o/oauth2/token
+#    scopes:
+#    - https://www.googleapis.com/auth/admin.directory.group
+#    sendAttributesAs: parameters ## vs path vs content vs headers?      
+#   proxy:
+#     host: 1.2.3.4
+#     port: 3128
+    credential:
+      !OAuth2
+      clientId: 810534103116-hvo5mesopj458s1mjtl9vitkm2t566hd.apps.googleusercontent.com
+      secret: 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
+      refreshToken: 1//03pxh9IlUZZv2CgYIARAAGAMSNwF-L9Irt6Fhta_I-GqhfT7CG74FQ9l8IZ_-rS1qp7Tsyh0nNs98PiImBjYMEoPn0GmH_pY70g0
+    requestParameters:
+      domain: sebet.org.uk
+#    endpointDetails:
+#    - create:
+#    - list:
+#    - update:
+#    - remove:
+
+- query: &GoogleGroups
+    !JsonQuery
+    name: Google groups
+    connection: *GoogleWorkspace
+    subContext: admin/directory/v1/groups
+    subElement: groups
+    
+- task:
+    !SimpleTask
+    name: Departments_create_HAD_Google
+    description: Copy AD groups to google
+    source: 
+      query: *ADDepartments
+    target: 
+      query: *GoogleGroups
+##  action: CREATE
+#    ## series of pattern to try to match things in source with things in target 
+    matchers:
+    - !AttributeValueMatcher
+      name: match_name
+      sourceAttribute: name
+      targetAttribute: name
+    - !RegexMatcher
+      name: match_name_regex
+#      !regexMatcher
+      sourceSignature:
+        attributes: 
+        - departmentName
+      targetSignature:
+        attributes: 
+        - name
+
+   
+  ## should state source or target I think (source by default?)... so also targetAttributes
+  ## delimiter? default? set alt
+    filters:
+#  #- name: left date hasnt happened yet
+#  #  sourceAttributes: endDate
+#  #  comparator: lessThan
+#  #  value: today
+    - name: only create and update
+      actions:
+      - CREATE
+      - UPDATE
+#  
+#  ## these are the values for each attribute for the new target thing:
+    attributes:
+    - !RegexAttribute
+      attribute: email
+      sources: 
+      - cn
+      pattern: s/^(\w+)$/$1@sebet.org.uk/
+    - !RegexAttribute
+      attribute: email
+      sources: 
+      - cn
+      pattern: s/^(\w+)\s(\w+)$/$1$2@sebet.org.uk/
+    - !RegexAttribute
+      attribute: email
+      sources: 
+      - cn
+      pattern: s/^(\w+)\s(\w+)\s(\w+)$/$1$2$3@sebet.org.uk/
+    - !CopyAttribute
+      attribute: name
+      source: cn
+      caseSensitive: true

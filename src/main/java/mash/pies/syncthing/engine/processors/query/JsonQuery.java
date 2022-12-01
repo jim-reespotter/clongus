@@ -6,9 +6,6 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
 import com.google.api.client.googleapis.services.json.AbstractGoogleJsonClient;
 import com.google.api.client.googleapis.services.json.AbstractGoogleJsonClientRequest;
 import com.google.api.client.googleapis.services.json.CommonGoogleJsonClientRequestInitializer;
@@ -28,15 +25,13 @@ import mash.pies.syncthing.engine.processors.Entity;
 import mash.pies.syncthing.engine.processors.change.ChangeCommandGenerator;
 import mash.pies.syncthing.engine.processors.change.RestChangeCommandGenerator;
 import mash.pies.syncthing.engine.processors.connection.RestConnection;
-import mash.pies.syncthing.engine.processors.query.JsonQuery.GenericJsonClient.Builder;
+//import mash.pies.syncthing.engine.processors.query.JsonQuery.GenericJsonClient.Builder;
 
 /**
  * 
  */
 public class JsonQuery extends Query {
     
-    static Logger logger = LogManager.getLogger();
-
     private String subContext;
     private String subElement;
 
@@ -50,12 +45,11 @@ public class JsonQuery extends Query {
     public RestConnection getConnection() {return connection;}
     public void setConnection(RestConnection connection) {this.connection = connection;}
 
-
     // move this to connection?
     private GenericJsonClient client;
 
     /**
-     * remove try, add throws?
+     * 
      * @param cfg
      */
     private void init () throws IOException {
@@ -73,9 +67,20 @@ public class JsonQuery extends Query {
         client = new GenericJsonClient(builder);
     }
 
+    private String getUrlTemplate() {
+        String template = "?";
+
+        for (String key : getConnection().getRequestParameters().keySet())
+            template += key+"="+getConnection().getRequestParameters().get(key)+"&";
+//        if (template.length() == 1)
+  //          return null;
+    //    else
+            return template.substring(0, template.length()-1);
+    }
     @Override
     protected Set<Entity> read(Map<String, String> params) throws Exception {
 
+        debug("Reading entries from REST");
         if (client == null)
             init();
 
@@ -83,12 +88,14 @@ public class JsonQuery extends Query {
         
         GenericJson json = client.list().execute();  // pagination??
 
-        System.out.println (json.toPrettyString());
+    //    System.out.println (json.toPrettyString());
         JsonObject obj = JsonParser.parseString(json.toString()).getAsJsonObject();
 
         Iterator<JsonElement> iter = obj.getAsJsonArray(getSubElement()).iterator();
         while (iter.hasNext()) {
             JsonObject o = iter.next().getAsJsonObject();
+
+            trace("Proxcessing item: "+o.toString());
 
             Entity e = new Entity();
             for (String key: o.keySet()) {
@@ -102,6 +109,7 @@ public class JsonQuery extends Query {
                     e.put(key, value.getAsJsonArray());
             }
             entities.add(e);
+            trace("imported " + e.toString());
         }
 
         return entities;
@@ -140,24 +148,26 @@ public class JsonQuery extends Query {
         return new RestChangeCommandGenerator(this, params);
     }
 
-    static class GenericJsonClient extends AbstractGoogleJsonClient {
+    public class Builder extends AbstractGoogleJsonClient.Builder {
+
+        protected Builder(HttpTransport transport, JsonFactory jsonFactory, String rootUrl, String servicePath,
+                HttpRequestInitializer httpRequestInitializer, boolean legacyDataWrapper) {
+            super(transport, jsonFactory, rootUrl, servicePath, httpRequestInitializer, legacyDataWrapper);
+        }
+
+        @Override
+        public GenericJsonClient build() {
+            return new GenericJsonClient(this);
+        }
+    }
+    
+    class GenericJsonClient extends AbstractGoogleJsonClient {
 
         public GenericJsonClient(Builder builder) {
             super(builder);
         }
 
-        public static class Builder extends AbstractGoogleJsonClient.Builder {
 
-            protected Builder(HttpTransport transport, JsonFactory jsonFactory, String rootUrl, String servicePath,
-                    HttpRequestInitializer httpRequestInitializer, boolean legacyDataWrapper) {
-                super(transport, jsonFactory, rootUrl, servicePath, httpRequestInitializer, legacyDataWrapper);
-            }
-    
-            @Override
-            public GenericJsonClient build() {
-                return new GenericJsonClient(this);
-            }
-        }
 
         public List list () throws IOException {
             List list = new List ();
@@ -168,7 +178,7 @@ public class JsonQuery extends Query {
         class List extends GenericJsonRequest {
 
             protected List() {
-                super("GET", "?domain=sebet.org.uk", null); //Entity.class??!?
+                super("GET", getUrlTemplate(), null); 
             }
 
         }
@@ -182,7 +192,7 @@ public class JsonQuery extends Query {
         class Create extends GenericJsonRequest {
 
             protected Create(GenericJson obj) {//GenericJsonClient.this, "POST",
-                super("POST", "?domain=sebet.org.uk", obj); //Entity.class??!?
+                super("POST", getUrlTemplate(), obj); //Entity.class??!?
             }
         }
 
@@ -195,7 +205,7 @@ public class JsonQuery extends Query {
         class Update extends GenericJsonRequest {
 
             protected Update(String id, GenericJson obj) {
-                super("PUT", id+"?domain=sebet.org.uk", obj);
+                super("PUT", id+getUrlTemplate(), obj);
             }
         }
 
@@ -208,8 +218,9 @@ public class JsonQuery extends Query {
         class Remove extends GenericJsonRequest {
 
             protected Remove(GenericJson obj) {
-                super("DELETE", obj.get("email")+"?domain=sebet.org.uk", null);
-            }}
+                super("DELETE", obj.get("id")+getUrlTemplate(), null);
+            }
+        }
         
         abstract class GenericJsonRequest extends AbstractGoogleJsonClientRequest<GenericJson> {
 

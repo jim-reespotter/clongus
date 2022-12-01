@@ -17,8 +17,6 @@ import mash.pies.syncthing.engine.processors.Entity;
 import mash.pies.syncthing.engine.processors.change.ChangeCommandGenerator;
 import mash.pies.syncthing.engine.processors.change.LdapObjectChangeCommandGenerator;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 /**
  * 
@@ -30,7 +28,7 @@ public class LdapObjectQuery extends LdapQuery {
         //    private LdapConnectionConfig connection;
         private String subOU;
         private String filter;
-        private String scope;
+        private SearchScope scope = SearchScope.SUBTREE;
         
     //    public LdapConnectionConfig getConnection() {return connection;}
     
@@ -39,23 +37,23 @@ public class LdapObjectQuery extends LdapQuery {
         public void setSubOU(String subOU) {this.subOU = subOU;}
         public String getFilter() {return filter;}
         public void setFilter(String filter) {this.filter = filter;}
-        public String getScope() {return scope;}
-        public void setScope(String scope) {this.scope = scope;}
+        public String getScope() {return scope.toString();}
+        public void setScope(String scope) {this.scope = SearchScope.valueOf(scope);}
 
-    static Logger logger = LogManager.getLogger();
+//    static Logger logger = LogManager.getLogger();
 
     @Override
     protected Set<Entity> read(Map<String, String> params) throws LdapException {
 
         String filterString = "(&" + filter;
         for (String key : params.keySet())
-        filterString += "(" + key + "=" + params.get(key) + ")";
+            filterString += "(" + key + "=" + params.get(key) + ")";
         filterString += ")";
 
-        logger.debug("LDAP Object QUery - base: {}; filter {}; scope: SUB",
-                getSubOU() + "," + getConnection().getBaseDN(), filterString);
+        debug("LDAP Object QUery - base: "+getSubOU() + "," + getConnection().getBaseDN()+"; filter "+ filterString+"; scope: "+scope.toString());
+                
         SearchRequest searchRequest = SearchRequest.builder()
-                .scope(SearchScope.SUBTREE) // TO DO: set this from config - SearchControls.OBJECT_SCOPE etc
+                .scope(scope) // TO DO: set this from config - SearchControls.OBJECT_SCOPE etc
                 .dn(getSubOU() + "," + getConnection().getBaseDN())
                 .filter(filterString)
                 .build();
@@ -67,8 +65,12 @@ public class LdapObjectQuery extends LdapQuery {
 
         Set<Entity> entities = new HashSet<Entity>();
 
-        for (LdapEntry entry : entries)
-            entities.add(processRecord(entry));
+        for (LdapEntry entry : entries) {
+            trace("Processing: "+entry.toString());
+            Entity e = processRecord(entry);
+            entities.add(e);
+            trace("imported " + e.toString());
+        }
 
         return entities;
 
@@ -78,7 +80,6 @@ public class LdapObjectQuery extends LdapQuery {
     private Entity processRecord(LdapEntry entry) {
 
         Entity e = new Entity();
-//        e.setRegexSubstitutor(this.idRegex);
 
         Collection<LdapAttribute> attrs = entry.getAttributes();
         for (LdapAttribute attr : attrs) {
@@ -98,6 +99,7 @@ public class LdapObjectQuery extends LdapQuery {
             }
         }
 
+        trace("imported "+e.toString());
         return e;
     }
 

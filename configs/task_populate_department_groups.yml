@@ -1,22 +1,34 @@
-##
-## Task to manage group membership.
-##
-## This runs a query to get a list of groups to deal with, then runs a subtask to ensure membership for each of these groups.
-##
+# Task to manage members of a departments
+#
+# - CSV connection (HRFiles)
+#   - List of members and their dept (csv query - HRDepts)
+#     - list of members who should be in a specific group (filter query) - source
+# 
+# - Ldap connection
+#   - List of groups (ldap search query) - we're going to iterate over these
+#   - List of current members in a specific group (ldap object query) - target
+#
+# - Match
+#   - list of members who should be in a group
+#   - list of AD users
+#
+# - Task:
+#   - get a list of groups:
+#     - list of groups (LDAP)
+#   - for each item:
+#     - list of ad users who should be that group (source)
+#     - list of current members (target)
+#
+#
+#
 ---
 ADDepartmentMembershipManagement:
-##
-## Defines a filesystem
-##
 - connection: &HRFiles
     !FileConnection
     name: HR_files
     description: file location for HR files
     path: configs/
 
-##
-## Defines a CSV file containing user details
-## 
 - query: &HREmployees
     !CsvQuery
     name: HR_Employees
@@ -24,51 +36,61 @@ ADDepartmentMembershipManagement:
     connection: *HRFiles
     filename: employees.csv
     headers: no
+#    file: (fileName)
     fields:
     - name: employeeID
+   #   type: caseInsensitiveString
     - name: firstname
+  #    type: caseSensitiveString
     - name: surname
+ #     type: caseSensitiveString
     - name: startDate
+    #  type: date
+     # format: YYYY-mm-dd
     - name: endDate
+      #type: date
+#      format: YYYY-mm-dd
     - name: department
+#      format: CaseInsensitiveString
     - name: role
+#      format: CaseInsensitiveString
 
-##
-##  Defines an LDAP connection
-##
+#- query: &EmployeesByGroup
+#    !FilterQuery
+#    query: *HREmployees
+
 - connection: &LDAP_RP
     !LdapConnection
     name: AD_LDAP
-    description: Connection to LDAP
-    url: ldaps://192.168.0.35
+    description: Read-write access to LDAP
+    url: ldaps://192.168.0.3
+    cert: xxx
     credential:
-      username: CN=sta_ldap,OU=testingStuff,DC=stuff,DC=things
-      password: asdf345SDFg
-    baseDN: DC=stuff,DC=things
+      username: CN=sta_ldap,OU=testingStuff,DC=reespotter,DC=home
+      password: asdf345SDFg345SD
+    baseDN: DC=reespotter,DC=home
 
-##
-## Defines an LDAP query to reference all user objects from specific OU
-##
 - query: &ADEmployees
     !LdapObjectQuery
+    ## LDAP lookup
     name: AD_users_employees
     description: Read-write access to manage users in employee OU
     connection: *LDAP_RP
     subOU: OU=test employees,OU=testingStuff
     filter: (objectClass=user)
-    scope: sub
+    scope: SUBTREE
 
-##
-## Defines a query that returns only the users in a specific group
-##
 - query: &UsersByGroup
     !MatchQuery
     source: 
       query: *HREmployees
       send: 
-      - department      ## this is a filter - we're only interested in records with a specific department set
+      - department
     target: 
       query: *ADEmployees
+      ## don't need to filter here but you can...
+      ##send:
+      ##- department -- doesn't work in our case because feilds don't match exactly
     matchers:
     - !RegexMatcher
       name: match employeeid
@@ -78,22 +100,20 @@ ADDepartmentMembershipManagement:
       targetSignature:  
         attributes: 
         - employeeID
+#    release:
+#      name: target.name
+#      dn: target.distinguishedName
 
-##
-## Defines an LDAP query to reference all group objects from specific OU
-##
 - query: &ADDeptGroups
     ## LDAP lookup
     !LdapObjectQuery
     name: AD_department_groups
+#    description: Read-write access to manage groups in department OU
     connection: *LDAP_RP
     subOU: OU=departments,ou=groups,OU=testingStuff
     filter: (objectClass=group)
-    scope: sub
+    scope: SUBTREE
 
-##
-## Defines an LDAP query that returns all values of a specific attribute from a specific object
-##
 - query: &GroupMembers
     !LdapAttributeQuery
     name: group members
@@ -104,39 +124,31 @@ ADDepartmentMembershipManagement:
 - task:
     !ForEachTask
     name: manage department group membership - iterate through all groups, check membership
-    forEach:
-      ## This query 
+    forEach: 
       query: *ADDeptGroups
-      ## For each group found, only return cn and distinguishedName (but release them as 'dn', 'department' and 'target')
-      release:      
+      release:
         dn: distinguishedName
         department: cn
         ## predefined param for LdapAttributeQuery stating details of where to write changes
         target: distinguishedName
-
-    ## Tasks to run. Each task will be run with the above group object passed in as a filter
+  # filter:
     subtasks:
     - !SimpleTask
       name: update group membership
-
-
       source: 
         query: *UsersByGroup
         send:
         - department
-        ## Release values from the target object (without 'target' prefix, source values are released)
         release:
           member: target.distinguishedName
           name: target.name
           dn: target.distinguishedName
 
-      ## This is the values of the 'member' attribute of the named group object
+     ##     (could we do query: send: release: as properties of source instead?)
       target: 
         query: *GroupMembers
         send: 
         - dn
-
-      ## a match is when a user's DN is already present in the LDAP group object's member attribute
       matchers:
       - !RegexMatcher
         name: match_DNs
@@ -146,20 +158,19 @@ ADDepartmentMembershipManagement:
         targetSignature:
           attributes: 
           - member
-
-      ## Actions - add or remove entry
+#      condition: caseInsensitiveExactMatch
       attributes:
       - !CopyAttribute
         attribute: member
         source: member
-        updateOption: APPEND   ## multi values attribute, add another value
+        updateAction: APPEND
         conditions:
         - CREATE
-
+        ## how to remove them?
       - !CopyAttribute
         attribute: member
         source: member
-        updateOption: REMOVE   ## multi values attribute, only remove the specific value
+        updateAction: REMOVE
         conditions:
         - REMOVE
 

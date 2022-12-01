@@ -1,39 +1,29 @@
 # Clongus
 
-## Object synchronisation tool
+## Introduction
 
-Clongus is designed as an identity provisioning and management (IdM) utility. It takes source and target datasources and will update the state of the target datasoure based on the source and the configs passed in.
+Clongus is a tool for synchronising data sources. It differs from other tools in the following ways:
+- It is stateless. It does not store user data, it compares state on every run, and acts accordingly
+- All data is processed as key-value pairs, so rules for processing REST queries can equally be used for SQL queries
+- It is flexible - it abstracts all the ‘things’ in datasources and provides standard methods of processing them
+- It is not ‘opinionated’ - it isn’t geared specifically to user management (though it will do this), it is designed to deal with ‘things’ (things having a pretty board definition)
+- ‘things’ can be entities, properties of entities, relationships, anything you can express in terms of key-value pairs
 
-It currently will take CSV, LDAP or SQL as a source and LDAP or SQL as a target datasource.
+## Use cases:
 
-See the config files (in configs/) for example configs.
+- User lifecycle management
+- group and membership management
+- calendar, event and subscription management
+- privileges management
 
-## Example configs:
+## Documentation
 
-#### task_calendar_create
-
-Reads from a CSV file, will add/update a SQL entry (subject and ref fields) for each record in the CSV file 
-
-#### task_department_create
-
-Reads the same CSV file, will add/update an LDAP object (objectclass, name, DN, samaccountname) for each record in the CSV file
-
-#### task_employee_create_delete
-
-Reads a CSV file, will add/update/move an LDAP object (dn, objectClass, displayName, sam, password..) for each record int he CSV file
-
-#### populate_department_group
-
-Reads user CSV file, will add or remove group membership in LDAP
-
-
-### Development
-
-This is for reference only at this point - do not test it against production systems.
-
-#### Features in development
-
-- REST support
-- better file reading (and writing)
-- statement based SQL queries (rather than table based)
-- script based attribute generator
+- [Concepts]([Concepts](https://github.com/jim-reespotter/clongus/wiki/Concepts))
+- [Recipe structure - YAML]([yaml](https://github.com/jim-reespotter/clongus/wiki/yaml))
+- recipe fragments:
+  - [Connections]([Connections](https://github.com/jim-reespotter/clongus/wiki/Connections))
+  - [Queries]([Queries](https://github.com/jim-reespotter/clongus/wiki/Queries))
+  - [Matchers]([Matchers](https://github.com/jim-reespotter/clongus/wiki/Matchers))
+  - [Value generators]([ValueGenerators](https://github.com/jim-reespotter/clongus/wiki/ValueGenerators))
+- [Sample recipes]([SampleRecipes](https://github.com/jim-reespotter/clongus/wiki/SampleRecipes))
+- [Running Clongus](https://github.com/jim-reespotter/clongus/wiki/RunningClongus)

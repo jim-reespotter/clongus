@@ -12,12 +12,21 @@
         },
         {
             "type": "java",
-            "name": "Launch SyncApp",
+            "name": "Launch SyncRunner",
             "request": "launch",
-            "mainClass": "mash.pies.syncthing.engine.commandRunner.SyncApp",
+            "mainClass": "mash.pies.syncthing.engine.commandRunner.SyncRunner",
             "args": [
-                "configs/*.yml",
-                "--commit"
+    //            "configs/connections.yml",
+    //            "configs/queries.yml",
+    //            "configs/tasks.yml",
+//                "configs/task_employee_create_delete.yml",
+//                "configs/task_department_create.yml",
+     //           "configs/task_calendar_create.yml",
+//                "configs/GoogleGroups.yml",
+                "configs/task_populate_department_groups.yml",
+                "--commit",
+                "--loglevel",
+                "INFO"
             ],
             "env": {},
             "vmArgs": [

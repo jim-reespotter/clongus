@@ -1,4 +1,3 @@
-##
 ## Task to create new department groups.
 ##
 ---
@@ -12,12 +11,13 @@ ADGroupMaintenance:
 - connection: &LDAP_RP
     !LdapConnection
     name: AD_LDAP
-    description: Connection to LDAP
-    url: ldaps://192.168.0.35
+    description: Connection to resspotter.home DC
+    url: ldaps://192.168.0.3
+    cert: xxx
     credential:
-      username: CN=sta_ldap,OU=testingStuff,DC=stuff,DC=things
-      password: asdf345SDFg
-    baseDN: DC=stuff,DC=things
+      username: CN=sta_ldap,OU=testingStuff,DC=reespotter,DC=home
+      password: asdf345SDFg345SD
+    baseDN: DC=reespotter,DC=home
 
 #queries:
 - query: &HRDepartments
@@ -31,13 +31,14 @@ ADGroupMaintenance:
     - name: departmentName
 
 - query: &ADDepartments
+    ## TO DO: Should be objectQuery?
     !LdapObjectQuery
     name: AD_groups_departments
     description: Read-write access to manage groups in departments OU
     connection: *LDAP_RP
     subOU: OU=departments,OU=groups,OU=testingStuff
     filter: (objectClass=group)
-    scope: one
+    scope: ONELEVEL
 
 #tasks:
 - task:
@@ -48,9 +49,12 @@ ADGroupMaintenance:
       query: *HRDepartments
     target: 
       query: *ADDepartments
+##  action: CREATE
+#    ## series of pattern to try to match things in source with things in target 
     matchers:
     - !RegexMatcher
       name: match_name
+#      !regexMatcher
       sourceSignature:
         attributes: 
         - departmentName
@@ -58,26 +62,48 @@ ADGroupMaintenance:
         attributes: 
         - name
    
+  ## should state source or target I think (source by default?)... so also targetAttributes
+  ## delimiter? default? set alt
     filters:
-
+#  #- name: left date hasnt happened yet
+#  #  sourceAttributes: endDate
+#  #  comparator: lessThan
+#  #  value: today
+    - name: only create and update
+      actions:
+      - CREATE
+      - UPDATE
+#  
+#  ## these are the values for each attribute for the new target thing:
     attributes:
     - !RegexAttribute
       attribute: distinguishedName
       sources: 
       - departmentName
+      # relative to connection, not query (so you can move up from wuery)
       pattern: s/(.+)/CN=$1,OU=departments,OU=groups,OU=testingStuff/
-
     - !LiteralAttribute
       attribute: objectClass
+##    action: append  !! TO DO: fix matching, multi things (there's an enum in ldaptive to copy maybe?) !!
       values: 
       - top
       - group
-
+     # possibly need a flag to say order does not matter?
+##  - attribute: cn !! For AD, don't change CN, change DN instead !!
+##    type: regex
+##    sources: 
+##    - firstname
+##    - surname
+##    - employeeID
+##    pattern: s/(.*):(.*):(.*)/$1 $2 ($3)/
+###    delimiter: ':' default value!
     - !CopyAttribute
       attribute: name
       source: departmentName
       caseSensitive: false
-
     - !CopyAttribute
       attribute: sAMAccountName
       source: departmentName
+ #   - !LiteralAttribute
+  #    attribute: groupType
+   #   values: -2147483646
