@@ -20,7 +20,7 @@ public class LdapConnection extends Connection {
 
     private String url;
     private String cert;
-    private PasswordCredential credential = new PasswordCredential();
+    private PasswordCredential credential; //  = new PasswordCredential();
     private String baseDN;
 
     public String getUrl() {return url;}
@@ -38,18 +38,24 @@ public class LdapConnection extends Connection {
     public ConnectionFactory getConnectionFactory() {
         
         if (cf == null) {
-            cf = DefaultConnectionFactory.builder()
-            .config(ConnectionConfig.builder()
-            .url(url)
-            .useStartTLS(false)                 // TO DO: from config
-            .sslConfig(new SslConfig(new AllowAnyTrustManager()))       // TO DO - certs!
-            .connectionInitializers(BindConnectionInitializer.builder()
-                    .dn(credential.getUsername())
-                    .credential(credential.getPassword())
-                    .build()
-            )
-            .build())
-        .build();
+            DefaultConnectionFactory.Builder b = DefaultConnectionFactory.builder();
+
+            ConnectionConfig.Builder cb = ConnectionConfig.builder();
+            cb.url(url);
+            cb.useStartTLS(false);
+            cb.sslConfig(new SslConfig(new AllowAnyTrustManager()));
+            
+            if (credential != null) {
+                BindConnectionInitializer.Builder bind = BindConnectionInitializer.builder();
+                bind.dn(credential.getUsername());
+                bind.credential(credential.getPassword());
+                cb.connectionInitializers(bind.build());
+            }
+            else {} // anonymous bind?
+
+            b.config(cb.build());
+
+            cf = b.build();
         }
         
         // make ldaptive shut up...
