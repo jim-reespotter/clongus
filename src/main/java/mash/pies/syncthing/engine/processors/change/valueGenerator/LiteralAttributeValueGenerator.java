@@ -1,24 +1,22 @@
 package mash.pies.syncthing.engine.processors.change.valueGenerator;
 
-import java.util.Collection;
+import java.util.HashSet;
 
 import mash.pies.syncthing.engine.processors.Entity;
-import mash.pies.syncthing.engine.processors.change.ChangeValue;
 
 /**
  * Sets a apecific value for a target attribute
  */
 public class LiteralAttributeValueGenerator extends AttributeValueGenerator {
 
-    private Collection<String> values;
+    private Object value;
 
-    public Collection<String> getValues() {return values;}
-    public void setValues(Collection<String> values) {this.values = values;}
+    public Object getValue() {return value;}
+    public void setValue(Object value) {this.value = value;}
+    public void setValues(HashSet<String> value) {this.value = value;}
 
     @Override
-    ChangeValue generateValue(Entity e) {
-
-        return new ChangeValue(getUpdateAction(), values);
+    ChangedValue generateValue(Entity e) {
+        return new ChangedValue(value);
     }
-
 }

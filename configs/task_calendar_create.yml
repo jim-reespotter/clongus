@@ -12,7 +12,7 @@ SQLCalendar:
     cert: xxx
     credential:
       username: CN=sta_ldap,OU=testingStuff,DC=reespotter,DC=home
-      password: asdf345SDFg345SD
+      password: asdfasdfadd
     baseDN: DC=reespotter,DC=home
 
 - query: &ADDepartments

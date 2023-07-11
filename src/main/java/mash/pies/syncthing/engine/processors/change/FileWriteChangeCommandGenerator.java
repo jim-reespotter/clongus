@@ -1,8 +1,6 @@
 package mash.pies.syncthing.engine.processors.change;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.PrintWriter;
+
 import java.sql.SQLException;
 import java.util.Map;
 import java.util.regex.Matcher;
@@ -30,17 +28,17 @@ public class FileWriteChangeCommandGenerator extends ChangeCommandGenerator<File
     }
 
     @Override
-    public ChangeCommand buildCreateChange(Map<String, ChangeValue> changes) throws SQLException {
+    public ChangeCommand buildCreateChange(Map<String, Object> changes) throws SQLException {
         if (getQuery().getCreatePattern() != null)
-            return new Change(changes, getQuery().getCreatePattern());
+            return new Change(changes); //, getQuery().getCreatePattern());
         else
             return null;
     }
 
     @Override
-    public ChangeCommand buildUpdateChange(MatchedEntity me, Map<String, ChangeValue> changes) throws SQLException {
+    public ChangeCommand buildUpdateChange(MatchedEntity me, Map<String, Object> changes) throws SQLException {
         if (getQuery().getUpdatePattern() != null)
-            return new Change(changes, getQuery().getUpdatePattern());
+            return new Change(me, changes); //needs to send me to fill in blanks...
         else
             return null;
     }
@@ -57,10 +55,10 @@ public class FileWriteChangeCommandGenerator extends ChangeCommandGenerator<File
 
         private String command;
 
-        Change(Map<String, ChangeValue> changes, String replace) {
+        Change(Map<String, Object> changes) { //}, String replace) {  // Create changes...
+            //replace = getQuery().getCreatePattern();
             String input = "";
             String sp = "";
-            int i = 1;
             for (Field field : getQuery().getFields()) {
                 input += changes.get(field.getName()) + getQuery().getDelimiter();
                 sp += "(.+)" + getQuery().getDelimiter();
@@ -71,10 +69,35 @@ public class FileWriteChangeCommandGenerator extends ChangeCommandGenerator<File
             Pattern p = Pattern.compile(sp);
             Matcher m = p.matcher(input);
             if (m.find())
-                command = m.replaceAll(replace);
+                command = m.replaceAll(getQuery().getCreatePattern());
+            else
+                warn("Failed to generate create command for "+changes.toString());
         }
 
-        Change(Entity e, String replace) {
+        Change(MatchedEntity me, Map<String, Object> changes) { // update changes...
+
+            String input = "";
+            String sp = "";
+
+            for (Field field : getQuery().getFields()) {
+                Object tv = changes.get(field.getName());
+                if (tv == null)
+                    tv = me.getMatch().get(field.getName());
+                input += tv.toString() + getQuery().getDelimiter();
+                sp += "(.+)" + getQuery().getDelimiter();
+            }
+            input = input.substring(0, input.length() - 1);
+            sp = sp.substring(0, sp.length() - 1);
+
+            Pattern p = Pattern.compile(sp); // move this to Query...
+            Matcher m = p.matcher(input);
+            if (m.find()) 
+                command = m.replaceAll(getQuery().getUpdatePattern());
+            else
+                warn("Failed to generate update command for "+changes.toString());
+        }
+
+        Change(Entity e, String replace) { // remove changes...
             String input = "";
             String sp = "";
             int i = 1;
@@ -89,14 +112,16 @@ public class FileWriteChangeCommandGenerator extends ChangeCommandGenerator<File
             Matcher m = p.matcher(input);
             if (m.find())
                 command = m.replaceAll(replace);
+            else
+                warn("Failed to generate remove command for "+e.toString());
         }
 
         @Override
         public void invoke() throws Exception {
-            File f = new File(getQuery().getConnection().getPath()+"/"+getQuery().getFilename());
-            PrintWriter pw = new PrintWriter(new FileOutputStream(f, getQuery().getAppend()));
-            pw.write(command+"\n");
-            pw.close();
+//            File f = new File(getQuery().getConnection().getPath()+"/"+getQuery().getFilename());
+  //          PrintWriter pw = new PrintWriter(new FileOutputStream(f, getQuery().getAppend()));
+            getQuery().getPrintWriter().write(command+"\n");
+    //        pw.close();
         }
 
         @Override

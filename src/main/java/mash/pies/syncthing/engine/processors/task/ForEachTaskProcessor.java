@@ -24,12 +24,12 @@ public class ForEachTaskProcessor extends TaskProcessor {
     public void setSubtasks(List<TaskProcessor> tasks) {this.tasks = tasks;}
 
     @Override
-    public Collection<ChangeCommand> generateChanges() throws Exception {
-        return generateChanges(null);
+    public Collection<ChangeCommand> process() throws Exception {
+        return process(null);
     }
 
     @Override
-    public Collection<ChangeCommand> generateChanges(Map<String, String> params) throws Exception {
+    public Collection<ChangeCommand> process(Map<String, String> params) throws Exception {
 
         if (params == null)
             params = new HashMap<String,String> ();
@@ -46,9 +46,15 @@ public class ForEachTaskProcessor extends TaskProcessor {
                 forEachParams.put(param,forEachEntity.get(param).toString());
     
             for (TaskProcessor task : tasks) 
-                changes.addAll(task.generateChanges(forEachParams));
+                changes.addAll(task.process(forEachParams));
         
         }
         return changes;
+    }
+
+    public void closeConnections() {
+        forEach.getQuery().close();
+        for (TaskProcessor tp : tasks) 
+            tp.closeConnections();
     }
 }

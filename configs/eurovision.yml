@@ -1,0 +1,155 @@
+##
+## Selection of tasks to deal with eurovision data
+##
+---
+eurovision:
+- connection: &EurovisionFiles
+    !FileConnection
+    name: local files
+    path: ../
+
+- connection: &MariaDB
+    !SQLConnection
+    name: SQL database
+    description: Database of eurovision stuff
+    url: jdbc:mariadb://localhost:3306/sta
+    credential:
+      username: sta
+      password: sta
+
+- connection: &LDAP_RP
+    !LdapConnection
+    name: AD_LDAP
+    description: Connection to reespotter.home DC
+
+    url: ldaps://192.168.0.3
+    cert: xxx
+    credential:
+      username: CN=sta_ldap,OU=testingStuff,DC=reespotter,DC=home
+      password: asdf345SDFg345SD
+    baseDN: DC=reespotter,DC=home
+
+- query: &LDAPEurovisionArtists
+    !LdapObjectQuery
+    name: AD_eurovision_Songs
+    description: Read-write access to OU=songs,OU=eurovision,OU=testingStuff
+    connection: *LDAP_RP
+    subOU: OU=songs,OU=eurovision,OU=testingStuff
+    filter: (objectClass=group)
+    scope: SUBTREE
+
+- query: &NOTINUSE
+    !SQLQuery
+    name: SQL Calendars
+    description: table of calendars
+    connection: *MariaDB
+    table: calendars
+    primaryKeyFields:
+    - id
+
+- query: &CSVEurovisionArtists
+    !CsvQuery
+    name: Eurovision Artists
+    description: CSV file of employees
+    connection: *EurovisionFiles
+    filename: contestants.csv
+    headers: yes
+    fields:
+    - name: year
+    - name: c
+    - name: country
+    - name: artist
+    - name: song
+
+- task:
+    !SimpleTask
+    name: maintain eurovision artists
+    description: read artists from ../contenstants, writ them to LDAP
+    source:
+      query: *LDAPEurovisionArtists
+    target:
+      query: *CSVEurovisionArtists
+
+    matchers:
+    - !AttributeValueMatcher
+      name: match artist name
+      sourceSignature:
+        attributeName: artist
+      targetSignature:
+        attributeName: displayName
+    
+    attributes:
+    - !RegexAttribute
+      attribute: distinguishedName
+      sources: 
+      - artist
+      # relative to connection, not query (so you can move up from wuery)
+      pattern: s/(.*)/CN=$1,OU=songs,OU=eurovision,OU=testingStuff/
+      conditions:
+      - CREATE
+      - UPDATE
+#    - !RegexAttribute
+#      attribute: distinguishedName
+#      sources: 
+#      - cn
+#      # relative to connection, not query (so you can move up from wuery)
+#      pattern: s/(.+)/CN=$1,OU=ex employees,OU=testingStuff/
+#      conditions:
+#      - REMOVE
+    - !LiteralAttribute
+      attribute: objectClass
+      values: 
+      - user
+      - top
+      - person
+      - organizationalPerson
+    - !RegexAttribute
+      attribute: displayName
+      sources: 
+      - artist
+      - country
+      pattern: s/(.*):(.*)/$1 ($2)/
+    - !CopyAttribute
+      attribute: sn
+      source: artist
+    - !CopyAttribute
+      attribute: givenName
+      source: firstname
+      conditions:
+      - CREATE
+      - UPDATE
+    - !CopyAttribute
+      attribute: employeeID
+      source: employeeID
+    - !RegexAttribute
+      attribute: sAMAccountName
+      sources: 
+      - employeeID
+      - firstname
+      - surname
+      pattern: s/(\w+):(\w)\w*:(\w).+/$1$2$3/
+      conditions:
+      - CREATE
+#  - attribute: bitField
+#    bit: 5
+#    bitValue: true
+    - !RegexAttribute
+      attribute: department
+      sources: 
+      - department
+      pattern: s/(\w+)(\s?\w*)/ministry of $1$2/
+      conditions:
+      - CREATE
+      - UPDATE
+
+    - !RandomAttribute
+      attribute: userPassword
+      conditions:
+      - CREATE
+      length: 12
+      characters:
+      - abcde
+      - ABCDE
+      - 12345
+
+        

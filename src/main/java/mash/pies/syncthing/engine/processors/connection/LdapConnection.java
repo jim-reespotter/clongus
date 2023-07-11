@@ -1,9 +1,20 @@
 package mash.pies.syncthing.engine.processors.connection;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import org.ldaptive.BindConnectionInitializer;
 import org.ldaptive.ConnectionConfig;
 import org.ldaptive.ConnectionFactory;
 import org.ldaptive.DefaultConnectionFactory;
+import org.ldaptive.LdapException;
+import org.ldaptive.SearchOperation;
+import org.ldaptive.SearchRequest;
+import org.ldaptive.SearchScope;
+//import org.ldaptive.schema.SchemaFactory;
+import org.ldaptive.ad.schema.SchemaFactory;
+import org.ldaptive.schema.AttributeType;
+import org.ldaptive.schema.Schema;
 import org.ldaptive.ssl.AllowAnyTrustManager;
 import org.ldaptive.ssl.SslConfig;
 import org.slf4j.LoggerFactory;
@@ -56,15 +67,46 @@ public class LdapConnection extends Connection {
             b.config(cb.build());
 
             cf = b.build();
+
+            readSchema();
         }
         
-        // make ldaptive shut up...
-        Logger logger;;
+        // make ldaptive shut up... maybe??
+        Logger logger;
         logger = (Logger)LoggerFactory.getLogger("org.ldaptive");
         logger.setLevel(Level.INFO);
         logger = (Logger)LoggerFactory.getLogger("io.netty");
         logger.setLevel(Level.INFO);
-        
+    
         return cf;
+    }
+
+    private Map<String,AttributeType> attributesTypes = new HashMap<String,AttributeType>();
+
+    public AttributeType getAttributeType(String name) {return attributesTypes.get(name);}
+
+    private void readSchema() {
+
+
+        SearchRequest sr = SearchRequest.builder()
+            .scope(SearchScope.SUBTREE)
+            .dn("cn=schema,cn=configuration,dc=reespotter,dc=home")
+            .filter("(objectClass=*)")
+            .build();
+
+        SearchOperation sOp = new SearchOperation(getConnectionFactory(), sr);
+        
+        try {
+            Schema sch = SchemaFactory.createSchema(sOp.execute());
+            for (AttributeType at : sch.getAttributeTypes())
+                for (String name : at.getNames())
+                    attributesTypes.put(name, at);
+
+        } catch (LdapException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+
+
     }
 }

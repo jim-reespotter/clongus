@@ -16,7 +16,7 @@ public class RestChangeCommandGenerator extends ChangeCommandGenerator<JsonQuery
     }
 
     @Override
-    public ChangeCommand buildCreateChange(Map<String, ChangeValue> changes) throws SQLException {
+    public ChangeCommand buildCreateChange(Map<String, Object> changes) throws SQLException {
         return new RestCreateChangeCommand(changes);
     }
     
@@ -24,9 +24,9 @@ public class RestChangeCommandGenerator extends ChangeCommandGenerator<JsonQuery
 
         GenericJson obj = new GenericJson();
 
-        RestCreateChangeCommand(Map<String, ChangeValue> changes) {
+        RestCreateChangeCommand(Map<String, Object> changes) {
             for (String key : changes.keySet())
-                obj.put(key, changes.get(key).getValue().toString());
+                obj.put(key, changes.get(key).toString());
         }
 
         @Override
@@ -46,7 +46,7 @@ public class RestChangeCommandGenerator extends ChangeCommandGenerator<JsonQuery
     }
 
     @Override
-    public ChangeCommand buildUpdateChange(MatchedEntity me, Map<String, ChangeValue> changes) throws SQLException {
+    public ChangeCommand buildUpdateChange(MatchedEntity me, Map<String, Object> changes) throws SQLException {
         return new RestUpdateChangeCommand(me, changes);
     }
     
@@ -55,9 +55,9 @@ public class RestChangeCommandGenerator extends ChangeCommandGenerator<JsonQuery
         GenericJson obj = new GenericJson();
         String id;
 
-        RestUpdateChangeCommand (MatchedEntity me, Map<String, ChangeValue> changes) {
+        RestUpdateChangeCommand (MatchedEntity me, Map<String, Object> changes) {
             for (String key : changes.keySet())
-                obj.put(key, changes.get(key).getValue().toString());
+                obj.put(key, changes.get(key).toString());
             id = me.getMatch().get("id").toString();
         }
 

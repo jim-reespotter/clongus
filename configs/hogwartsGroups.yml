@@ -1,0 +1,63 @@
+##
+## manage house membership
+##
+- task:
+    !ForEachTask
+    name: populate house groups
+    forEach:
+      query: *HouseGroups
+      release:
+        dn: distinguishedName
+        house: cn
+        target: distinguishedName
+  
+    subtasks:
+    - !SimpleTask
+      name: update group membership
+      
+      source:
+        query: *UsersByHouse
+        send:
+        - house
+        release:
+          dn: target.distinguishedName
+          login: target.sAMAccountName
+
+      target:
+        query: *ADHouseMembers
+        send:
+        - dn
+#        release:
+ #         dn: member
+      
+    
+      matchers:
+      - !AttributeValueMatcher
+        name: match DNs
+        sourceSignature:
+          attributeName: dn
+        targetSignature:
+          attributeName: member
+
+      filters:
+      - !AllowFilter
+        name: process all
+        conditions: 
+        - REMOVE
+        - CREATE
+        - UPDATE
+
+      attributes:
+      - !CopyAttribute
+        attribute: member
+        source: dn
+        updateAction: APPEND
+        conditions:
+        - CREATE
+      - !CopyAttribute
+        attribute: member
+        source: dn
+        updateAction: REMOVE
+        conditions:
+        - REMOVE
+      

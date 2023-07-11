@@ -4,6 +4,8 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.text.DateFormat;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -53,7 +55,8 @@ public class CsvQuery extends ConnectionQuery {
     @Override
   public Set<Entity> read(Map<String, String> params) throws IOException {  // catch this internally?
 
-    debug("Reading CSV entries from "+filename+ " with filter: "+params.toString());
+    debug("Reading CSV entries from "+filename);
+    
     Set<Entity> entities = new HashSet<Entity>();
 
     File csvFile = new File(
@@ -74,7 +77,7 @@ public class CsvQuery extends ConnectionQuery {
         // filter which records to return:
         if (params != null && params.size() > 0) {
           for (String key : params.keySet())
-            if (e.get(key).toString().equals(params.get(key))) {
+            if (e.get(key) != null && e.get(key).toString().equals(params.get(key))) {
               entities.add(e);
               trace("imported "+e.toString());  
             }
@@ -115,8 +118,9 @@ public class CsvQuery extends ConnectionQuery {
   public static class Field {
 
     private String name;
-    private String type;    //!! might cause REST issues! dataType instead? 
+    private String type = "text";
     private String format;
+    // do to: could put a default value?
 
     public Field() {}
     public Field(String name, String type, String format) {
@@ -131,5 +135,22 @@ public class CsvQuery extends ConnectionQuery {
     public void setType(String type) {this.type = type;}
     public String getFormat() {return format;}
     public void setFormat(String format) {this.format = format;}
+
+    public Object cast(String data) {
+      if (data.equals(""))
+          return null;
+          
+      switch (type) {
+        case "int":
+          return Integer.parseInt(data);
+        case "date":
+          // to do: move this to parse just the once (not every invocation)
+          DateTimeFormatter df = DateTimeFormatter.ofPattern(format);
+          return df.parse(data);    
+        case "text":
+        default: 
+          return data; // string!?
+      }
+    }
   }
 }

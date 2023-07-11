@@ -1,0 +1,120 @@
+##
+## Collection of tasks to provision identity of Hogwarts
+##
+## Tasks:
+## - populate all students (into ou=students)
+## - populate all staff (into ou=staff)
+## - move anyone who has left in ou=alumni
+## - put tthem in relevant groups - staff or student, plus houses
+## - set the manager of the houses
+---
+hogwarts:
+- connection: &Files
+    !FileConnection
+    name: fileStore
+    description: local directory with data files in
+    path: configs/
+
+- connection: &Hogwarts_AD
+    !LdapConnection
+    name: Hogwarts_AD
+    description: LDAP Connection to DC
+    url: ldap://192.168.0.3
+    cert: xxx
+    credential:
+#      username: CN=sta_ldap,OU=testingStuff,DC=reespotter,DC=home
+      username: sta_ldap@reespotter.home
+      password: asdfasdfasdfasdfasddf
+    baseDN: OU=Hogwarts,OU=TestingStuff,DC=reespotter,DC=home
+
+- connection: &MariaDB
+    !SQLConnection
+    name: SQL calendar database
+    description: Database of calendars, events, subscriptions
+    url: jdbc:mariadb://localhost:3306/sta
+    credential:
+      username: sta
+      password: sta
+
+- query: &CSV_Users
+    !CsvQuery
+    name: CSV_Users
+    description: CSV file of all users (read only)
+    connection: *Files
+    filename: hogwarts.csv
+    headers: yes
+    fields:
+    - name: login
+    - name: firstname
+    - name: lastname
+    - name: school
+    - name: role
+    - name: house
+    - name: quiddichTeam
+    - name: disabled
+    - name: password
+
+- query: &AD_groups
+    !LdapObjectQuery
+    name: AD_groups
+    description: get groups from groups OU
+    connection: *Hogwarts_AD
+    subOU: OU=groups,OU=Hogwarts,OU=TestingStuff
+    filter: (objectClass=group)
+    scope: ONELEVEL
+
+- query: &AD_users
+    !LdapObjectQuery
+    name: AD_students
+    description: users in ou=hogwarts
+    connection: *Hogwarts_AD
+    filter: (objectClass=user)
+    scope: SUBTREE
+
+- query: &HouseGroups
+    !LdapObjectQuery
+    name: retrieve Hogwarts groups
+    connection: *Hogwarts_AD
+    subOU: OU=Houses,OU=groups
+##    filter: (ObjectClass=group)
+    filter: (ObjectClass=group)
+    scope: ONELEVEL
+
+- query: &ADHouseMembers
+    !LdapAttributeQuery
+    name: house members
+    connection: *Hogwarts_AD
+    ou: OU=Houses,OU=Groups
+    attribute: member
+
+- query: &UsersByHouse
+    !MatchQuery
+    name: users by house
+    description: returns AD user objects that correlate to users in CSV (that are in specified house)
+    source:
+      query: *CSV_Users
+      send:
+      - house
+    target: 
+      query: *AD_users
+    matchers:
+    - !AttributeValueMatcher
+      name: match login name
+      sourceSignature:
+        attributeName: login
+      targetSignature:
+        attributeName: sAMAccountName
+      caseSensitive: false
+
+- query: &HogwartsTeams
+    !SQLQuery
+    connection: *MariaDB      
+    attributes:
+    - login
+    - playerNumber
+    - teamName
+    create: INSERT INTO player (login, number, team) VALUES (?, ?, (SELECT id FROM team WHERE name = ?))
+    retrieve: SELECT p.login AS "login", p.number AS "playerNumber", t.name AS "teamName" FROM player p, team t WHERE p.team = t.id
+    update: UPDATE player WHERE login = ? SET number = ? 
+    delete: DELETE FROM player WHERE login = ?
+

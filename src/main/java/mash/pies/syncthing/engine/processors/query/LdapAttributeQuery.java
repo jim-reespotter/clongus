@@ -14,6 +14,10 @@ import org.ldaptive.SearchScope;
 import mash.pies.syncthing.engine.processors.Entity;
 import mash.pies.syncthing.engine.processors.change.ChangeCommandGenerator;
 import mash.pies.syncthing.engine.processors.change.LdapAttributeChangeCommandGenerator;
+
+/**
+ * Requires a parameter 'dn' passed in stating the object to retrieve
+ */
 public class LdapAttributeQuery extends LdapQuery {
 
     private String ou;

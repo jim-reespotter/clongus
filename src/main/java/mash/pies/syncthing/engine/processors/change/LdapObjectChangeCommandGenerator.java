@@ -32,7 +32,7 @@ public class LdapObjectChangeCommandGenerator extends ChangeCommandGenerator<Lda
 
   /***************** CREATE object requests ******************/
 
-  public ChangeCommand buildCreateChange(Map<String, ChangeValue> changes) {
+  public ChangeCommand buildCreateChange(Map<String, Object> changes) {
     return new LdapObjectCreateChange(changes);
   }
 
@@ -40,13 +40,13 @@ public class LdapObjectChangeCommandGenerator extends ChangeCommandGenerator<Lda
 
     AddRequest req;
 
-    LdapObjectCreateChange(Map<String, ChangeValue> changeDetails) {
+    LdapObjectCreateChange(Map<String, Object> changeDetails) {
       super(changeDetails);
 
       AddRequest.Builder builder = AddRequest
           .builder()
           .dn(
-              (String) changeDetails.get("distinguishedName").getValue() +
+              (String) changeDetails.get("distinguishedName") +
                   "," +
                   getQuery().getConnection().getBaseDN());
 
@@ -54,7 +54,7 @@ public class LdapObjectChangeCommandGenerator extends ChangeCommandGenerator<Lda
 
       for (String attrName : changeDetails.keySet()) {
         LdapAttribute attribute = new LdapAttribute(attrName);
-        Object value = changeDetails.get(attrName).getValue();
+        Object value = changeDetails.get(attrName);
 
         if (value instanceof Collection) {
           Collection<?> coll = (Collection<?>) value;
@@ -102,7 +102,7 @@ public class LdapObjectChangeCommandGenerator extends ChangeCommandGenerator<Lda
   @Override
   public ChangeCommand buildUpdateChange(
       MatchedEntity me,
-      Map<String, ChangeValue> changes) {
+      Map<String, Object> changes) {
     LdapObjectUpdateChange change = new LdapObjectUpdateChange(me, changes);
 
     if (change.req == null && change.dnReq == null) 
@@ -117,41 +117,43 @@ public class LdapObjectChangeCommandGenerator extends ChangeCommandGenerator<Lda
     ModifyRequest req;
     ModifyDnRequest dnReq;
 
-    MatchedEntity me;
+    MatchedEntity source;
 
-    LdapObjectUpdateChange(MatchedEntity me, Map<String, ChangeValue> changeDetails) {
+    LdapObjectUpdateChange(MatchedEntity source, Map<String, Object> changeDetails) {
       super(changeDetails);
-      this.me = me;
+      this.source = source;
 
-      Entity match = me.getMatch();
-      ModifyRequest.Builder builder = ModifyRequest
-          .builder()
-          .dn(match.get("distinguishedName").toString());
+      Entity target = source.getMatch();
 
-      String changeDN = changeDetails.get("distinguishedName").getValue().toString() +
-          "," +
-          getQuery().getConnection().getBaseDN();
+      // work out if object needs moving(== change of distinguishedName)
+      if (changeDetails.get("distinguishedName") != null) {
+        String changeDN = changeDetails.get("distinguishedName").toString() +
+            "," + getQuery().getConnection().getBaseDN();
 
-      String targetDN = match.get("distinguishedName").toString();
+        String targetDN = target.get("distinguishedName").toString();
 
-      if (changeDN.equals(targetDN)) {
-        changeDetails.remove("distinguishedName");
-  //      logger.trace("removed potential change of DN");
-      } else {
-        ModifyDnRequest.Builder dnBuilder = ModifyDnRequest
+        if (changeDN.toLowerCase().equals(targetDN.toLowerCase())) {
+          changeDetails.remove("distinguishedName");
+        } else {
+          ModifyDnRequest.Builder dnBuilder = ModifyDnRequest
             .builder()
             .oldDN(targetDN)
             .newRDN(changeDN.substring(0, changeDN.indexOf(",")))
             .superior(changeDN.substring(changeDN.indexOf(",") + 1))
             .delete(true);
-        dnReq = dnBuilder.build();
+          dnReq = dnBuilder.build();
+        }
       }
+
+      ModifyRequest.Builder builder = ModifyRequest
+          .builder()
+          .dn(target.get("distinguishedName").toString());
 
       HashSet<AttributeModification> attrs = new HashSet<AttributeModification>();
 
       for (String attrName : changeDetails.keySet()) {
         LdapAttribute attribute = new LdapAttribute(attrName);
-        Object value = changeDetails.get(attrName).getValue();
+        Object value = changeDetails.get(attrName);
         if (value instanceof Collection) {
           Collection<?> coll = (Collection<?>) value;
           if (coll.size() > 0)
@@ -197,15 +199,19 @@ public class LdapObjectChangeCommandGenerator extends ChangeCommandGenerator<Lda
 
     @Override
     public String toString() {
-      String msg = "Update: "+req.getDn();
-      msg += " (Attributes: ";
-      for (AttributeModification mod : req.getModifications())
-        msg += 
-            mod.getOperation().name() + " "+
-            mod.getAttribute().getName() +"="+
-            mod.getAttribute().getStringValue()+"; ";
-      msg+=")";
-      return msg;
+      if (req == null)
+        return dnReq.getOldDn() + " -> " + dnReq.getNewSuperiorDn();
+      else {
+        String msg = "Update: "+req.getDn();
+        msg += " (Attributes: ";
+        for (AttributeModification mod : req.getModifications())
+          msg += 
+              mod.getOperation().name() + " "+
+              mod.getAttribute().getName() +"="+
+              mod.getAttribute().getStringValue()+"; ";
+        msg+=")";
+        return msg;
+      }
     }
   }
 
@@ -250,9 +256,9 @@ public class LdapObjectChangeCommandGenerator extends ChangeCommandGenerator<Lda
    */
   private abstract class LdapObjectChange implements ChangeCommand {
 
-    Map<String, ChangeValue> changeDetails;
+    Map<String, Object> changeDetails;
 
-    LdapObjectChange (Map<String, ChangeValue> changeDetails) {
+    LdapObjectChange (Map<String, Object> changeDetails) {
       this.changeDetails = changeDetails;
     }
   }

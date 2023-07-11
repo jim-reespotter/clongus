@@ -6,14 +6,11 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-import org.springframework.data.mongodb.core.mapping.DBRef;
-
 import mash.pies.syncthing.engine.processors.Entity;
 import mash.pies.syncthing.engine.processors.LogBase;
 
 public class QuerySpec extends LogBase {
 
-    @DBRef
     private Query query;
 
     /**

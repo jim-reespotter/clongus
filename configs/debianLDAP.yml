@@ -1,0 +1,74 @@
+##
+## Simple task to pull all user objects from ou=users,dc=debian,dc=org (db.debian.org)
+## and create a CSV of them
+##
+---
+DebianLDAP:
+- connection: &LocalFiles
+    !FileConnection
+    name: local files
+    path: ./
+
+- task:
+    !SimpleTask
+    name: Debian LDAP to CSV
+    description: read user objects (objectClass=user) from db.debian.org, puts them into a CSV file
+    source:
+      query:
+        !LdapObjectQuery
+        name: user obejcts from debian LDAP
+        subOU: ou=users
+        filter: (&(objectClass=inetOrgPerson)(uidNumber=3201))
+        scope: SUBTREE
+        connection:
+          !LdapConnection
+          name: Debian LDAP
+          url: ldap://db.debian.org
+          baseDN: dc=debian,dc=org
+    target:
+      query:
+        !ReadWriteQuery
+        name: read from empty file, write CSV
+        read:
+          !FileReadQuery
+          name: read empty file
+          connection: *LocalFiles
+          filename: userdata.csv
+          pattern: ^([0-9]+),"([^"]+)","([^"]+)
+          fields:
+          - name: employeeID
+          - name: firstName
+          - name: lastName
+        write:
+          !FileWriteQuery
+          name: write CSV file
+          connection: *LocalFiles
+          filename: changes.csv
+          fields:
+          - name: employeeID
+          - name: firstName
+          - name: lastName
+          createPattern: Create $1,"$2","$3"
+          updatePattern: Update $1,"$2","$3"
+          removePattern: Remove $1
+          append: false
+    matchers:
+    - !AttributeValueMatcher
+      name: match uidNumbers
+      sourceSignature:
+        attributeName: uidNumber
+      targetSignature:
+        attributeName: employeeID
+    attributes:
+    - !CopyAttribute
+      attribute: employeeID
+      source: uidNumber
+    - !CopyAttribute
+      attribute: firstName
+      source: cn
+      caseSensitive: true
+    - !CopyAttribute
+      attribute: lastName
+      source: sn
+      caseSensitive: true
+  

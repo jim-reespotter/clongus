@@ -1,0 +1,49 @@
+- task:
+    !SimpleTask
+    name: maintain database of Quiddich teams
+
+    source:
+      query: *CSV_Users
+    target: 
+      query: *HogwartsTeams
+
+    matchers:
+    - !AttributeValueMatcher
+      name: match logins
+      sourceSignature:
+        attributeName: login
+      targetSignature:
+        attributeName: login
+      caseSensitive: true
+
+    filters:
+    - !AllowFilter
+      name: allow all deletes
+      conditions:
+      - REMOVE
+    - !RegexFilter
+      name: allow through quiddich players
+      attributes: 
+      - quiddichTeam
+      pattern: ^\w.*
+
+    attributes:
+    - !CopyAttribute
+      attribute: login
+      source: login
+
+    - !CopyAttribute
+      attribute: teamName
+      source: house
+
+    - !GroovyAttribute
+      attribute: playerNumber
+      sources:
+      - password
+      imports:
+      - java.util.zip.CRC32
+      script: |
+        def bytes = password.getBytes();
+        def crc32 = new CRC32();
+        crc32.update(bytes, 0, bytes.length);
+        Long.toString(crc32.getValue()).substring(0,3)

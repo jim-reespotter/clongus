@@ -1,7 +1,6 @@
 package mash.pies.syncthing.engine.processors.change.valueGenerator;
 
 import mash.pies.syncthing.engine.processors.Entity;
-import mash.pies.syncthing.engine.processors.change.ChangeValue;
 
 /**
  * Generat a random value for the given attribute
@@ -20,12 +19,12 @@ public class RandomAttributeValueGenerator extends AttributeValueGenerator {
 
 
     @Override
-    ChangeValue generateValue(Entity e) {
+    ChangedValue generateValue(Entity e) {
         String result = "";
 
         for (int i = 0; i < length; i++)
             result += characters[i % characters.length]
                     .charAt((int) ((characters[i % characters.length].length()) * Math.random()));
-        return new ChangeValue(getUpdateAction(), result);
+        return new ChangedValue(result);
     }
 }

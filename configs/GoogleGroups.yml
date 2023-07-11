@@ -7,7 +7,7 @@ GoogleUserMaintenance:
     cert: xxx
     credential:
       username: CN=sta_ldap,OU=testingStuff,DC=reespotter,DC=home
-      password: asdf345SDFg345SD
+      password: adfadsfasdfasdf
     baseDN: DC=reespotter,DC=home
 
 - query: &ADDepartments
@@ -35,8 +35,8 @@ GoogleUserMaintenance:
     credential:
       !OAuth2
       clientId: 810534103116-hvo5mesopj458s1mjtl9vitkm2t566hd.apps.googleusercontent.com
-      secret: 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
-      refreshToken: 1//03pxh9IlUZZv2CgYIARAAGAMSNwF-L9Irt6Fhta_I-GqhfT7CG74FQ9l8IZ_-rS1qp7Tsyh0nNs98PiImBjYMEoPn0GmH_pY70g0
+      secret: GOCSPX-vwsl7z
+      refreshToken: 1//03pxh9IY70g0
     requestParameters:
       domain: sebet.org.uk
 #    endpointDetails:

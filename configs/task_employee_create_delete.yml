@@ -23,10 +23,34 @@ ADUserMaintenance:
     cert: xxx
     credential:
       username: CN=sta_ldap,OU=testingStuff,DC=reespotter,DC=home
-      password: asdf345SDFg345SD
+      password: asdfasdfasdfasdf
     baseDN: DC=reespotter,DC=home
 
-- query: &HREmployees
+- query: &HREmployeesFileRead
+    !FileReadQuery
+    name: HR_Employees vis !FileReadQuery
+    description: Pattern match file processing of below CSV
+    connection: *HRFiles
+    filename: employees.csv
+    pattern: ^([0-9]+),([^,]+),([^,]+),([^,]*),([^,]*),([^,]+),([^,]+)
+    fields:
+    - name: employeeID
+    - name: firstname
+    - name: surname
+    - name: startDate
+      type: date
+      format: yyyy-MM-dd
+    - name: endDate
+      type: date
+      format: yyyy-MM-dd
+    - name: department
+    - name: role
+    ignore:
+    - ^\s*$
+    - ^\/\/
+    - ^#
+
+- query: &HREmployeesCSV
     !CsvQuery
     name: HR_Employees
     description: CSV file of employees
@@ -43,20 +67,10 @@ ADUserMaintenance:
       type: caseSensitiveString
     - name: startDate
       type: date
-##      format: YYYY-mm-dd
     - name: endDate
       type: date
-##      format: YYYY-mm-dd
     - name: department
-##      format: CaseInsensitiveString
     - name: role
-##      format: CaseInsensitiveString
-#    identifier:
-#      attributes:
-#      - firstname
-#      - surname
-#      - employeeID
-#      pattern: /(.+):(.+):(.+)/$1 $2 ($3)/
 
     ## optional means of describing - eg: firstname surname empID -> regex $1 $2 ($3)
     ## something similar for all queries? Apps through for matchedQus?
@@ -70,20 +84,21 @@ ADUserMaintenance:
     subOU: OU=testingStuff
     filter: (&(objectClass=user)(!(sAMAccountName=STA_LDAP)))
     scope: SUBTREE
-#    identifier:
-#      attributes:
-#      - displayName
-#      - employeeID
-#      pattern: /(.+):(.+)/$1 ($2)/
 
 - task:
     !SimpleTask
     name: emplyees_create_HR_AD
     description: create AD accounts for missing employees. Account will be disabled until start date
   
+  ## for % this will be (no of changes / filtered target)*100
+    thresholds:
+      CREATE: 10
+      UPDATE: 20%
+      REMOVE: 20%
+
     ## source and target connections:
     source: 
-      query: *HREmployees
+      query: *HREmployeesFileRead
     target: 
       query: *ADEmployees
 
@@ -125,11 +140,19 @@ ADUserMaintenance:
     #  sourceAttributes: endDate
     #  comparator: lessThan
     #  value: today
-    - name: only create and update
-      actions:
+#    - !AllowFilter
+    - !RegexFilter
+      name: only do removals from ou=test employees
+      attributes:
+      - distinguishedName
+      pattern: .+test.employees.+
+      conditions:
+      - REMOVE
+    - !AllowFilter
+      conditions:
       - CREATE
       - UPDATE
-  
+
     ## these are the values for each attribute for the new target thing:
     attributes:
     - !RegexAttribute
@@ -139,7 +162,8 @@ ADUserMaintenance:
       - firstname
       - surname
       # relative to connection, not query (so you can move up from wuery)
-      pattern: s/(.*):(.*):(.*)/CN=$2 $3 ($1),OU=test employees,OU=testingStuff/
+      pattern: (.+):(.+):(.+)
+      substitution: CN=$2 $3 ($1),OU=test employees,OU=testingStuff
       conditions:
       - CREATE
       - UPDATE
@@ -151,7 +175,8 @@ ADUserMaintenance:
       sources: 
       - cn
       # relative to connection, not query (so you can move up from wuery)
-      pattern: s/(.+)/CN=$1,OU=ex employees,OU=testingStuff/
+      pattern: (.+)
+      substitution: CN=$1,OU=ex employees,OU=testingStuff
       conditions:
       - REMOVE
 
@@ -177,7 +202,8 @@ ADUserMaintenance:
       sources: 
       - firstname
       - surname
-      pattern: s/(.*):(.*)/$1 $2/
+      pattern: (.*):(.*)
+      substitution: $1 $2
     - !CopyAttribute
       attribute: sn
       source: surname
@@ -196,7 +222,8 @@ ADUserMaintenance:
       - employeeID
       - firstname
       - surname
-      pattern: s/(\w+):(\w)\w*:(\w).+/$1$2$3/
+      pattern: (\w+):(\w)\w*:(\w).+
+      substitution: $1$2$3
       conditions:
       - CREATE
 #  - attribute: bitField
@@ -206,7 +233,8 @@ ADUserMaintenance:
       attribute: department
       sources: 
       - department
-      pattern: s/(\w+)(\s?\w*)/ministry of $1$2/
+      pattern: (\w+)(\s?\w*)
+      substitution: ministry of $1$2
       conditions:
       - CREATE
       - UPDATE
@@ -236,8 +264,10 @@ ADUserMaintenance:
       - abcde
       - ABCDE
       - 12345
+
 #    - !BitwiseAttribute
 #      attribute: userAccountControl
+#      initialLength: 16
 #      set:
 #        6: true
         

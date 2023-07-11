@@ -1,0 +1,126 @@
+##
+## Hogwarts user provisioning
+##
+
+- task:
+    !SimpleTask
+    name: manage user accounts
+
+    source:
+      query: *CSV_Users
+    target:
+      query: *AD_users
+
+    matchers:
+    - !AttributeValueMatcher
+      name: Match logins
+      sourceSignature:
+        attributeName: login
+      targetSignature:
+        attributeName: sAMAccountName
+      caseSensitive: false
+
+    - !RegexMatcher
+      name: match first and last name
+      sourceSignature:
+        attributes: 
+        - firstname
+        - lastname
+      targetSignature:
+        attributes: 
+        - givenName
+        - sn
+      caseSensitive: false
+    
+    filters:
+    - !RegexFilter
+      name: check user is a-e
+      attributes:
+      - lastname
+##      - groups
+##      pattern: "[a-eA-E].*Students.*"
+      pattern: ^[a-eA-E].*
+      conditions:
+      - CREATE
+      - UPDATE
+    - !AllowFilter
+      name: process all
+      conditions: 
+      - REMOVE
+      - CREATE
+      - UPDATE
+
+    attributes:
+    - !RegexAttribute
+      attribute: distinguishedName
+      sources: 
+      - firstname
+      - lastname
+      - role
+      pattern: ^(.+):(.+):(.+)
+      substitution: CN=$1 $2,OU=$3
+      conditions:
+      - CREATE
+      - UPDATE
+
+    - !LiteralAttribute
+      attribute: objectClass
+      values: 
+      - user
+      - top
+      - person
+      - organizationalPerson
+
+    - !RegexAttribute
+      attribute: displayName
+      sources: 
+      - firstname
+      - lastname
+      pattern: (.*):(.*)
+      substitution: $1 $2
+
+    - !CopyAttribute
+      attribute: sn
+      source: lastname
+
+    - !CopyAttribute
+      attribute: givenName
+      source: firstname
+
+    - !CopyAttribute
+      attribute: sAMAccountName
+      source: login
+      caseSensitive: false
+      conditions:
+      - CREATE
+
+    - !RegexAttribute
+      attribute: department
+      sources: 
+      - house
+      pattern: ^(.+)
+      substitution: $1
+      conditions:
+      - CREATE
+      - UPDATE
+
+    - !RegexAttribute
+      attribute: userPassword
+      sources: 
+      - password
+      - password
+      pattern: (\w+):(\w+)
+      substitution: $1$2
+      conditions:
+      - CREATE
+
+    ## move ex students to ou=alumni on leaving  
+    - !RegexAttribute
+      attribute: distinguishedName
+      sources: 
+      - cn
+      pattern: (.+)
+      substitution: CN=$1,OU=Alumni
+      conditions:
+      - REMOVE
+

@@ -135,6 +135,10 @@ ADDepartmentMembershipManagement:
     subtasks:
     - !SimpleTask
       name: update group membership
+      thresholds:
+        CREATE: 10
+        UPDATE: 20%
+        REMOVE: 20%
       source: 
         query: *UsersByGroup
         send:
@@ -159,6 +163,13 @@ ADDepartmentMembershipManagement:
           attributes: 
           - member
 #      condition: caseInsensitiveExactMatch
+
+      filters:
+      - !AllowFilter
+        conditions:
+        - CREATE
+        - UPDATE
+        - REMOVE
       attributes:
       - !CopyAttribute
         attribute: member

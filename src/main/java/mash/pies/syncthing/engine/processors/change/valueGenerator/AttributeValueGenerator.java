@@ -1,19 +1,23 @@
 package mash.pies.syncthing.engine.processors.change.valueGenerator;
 
+import java.lang.reflect.Array;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashSet;
 
 import mash.pies.syncthing.engine.processors.Entity;
 import mash.pies.syncthing.engine.processors.ProcessorBase;
-import mash.pies.syncthing.engine.processors.change.ChangeValue;
 import mash.pies.syncthing.engine.processors.matcher.MatchedEntity;
+import mash.pies.syncthing.engine.processors.util.Condition;
+import mash.pies.syncthing.engine.processors.util.UpdateAction;
 
 /**
  * Base class for processors to work out target value for an attribute
  *
  * In addition this (base class) also checks whether the new value represents a
  * change in value
- * (specifically for update here)
+ * (applicable for updates and possibly removes)
  *
  * TO DO: move code from changeGenerator to here.
  * also consider:
@@ -22,20 +26,6 @@ import mash.pies.syncthing.engine.processors.matcher.MatchedEntity;
  * - replace/append(/remove?) existing values
  */
 public abstract class AttributeValueGenerator extends ProcessorBase {
-
-  public static enum UpdateAction {
-    OVERWRITE,  // replace all existing values
-    APPEND,     // replace existing value if single valued?
-    REMOVE,     // remove a specific value
-    CLEAR       // remove all values
-  }
-
-
-  public enum Condition {
-    CREATE,
-    UPDATE,
-    REMOVE
-  }
 
   private String attribute;
   private UpdateAction updateOption = UpdateAction.OVERWRITE;
@@ -51,9 +41,6 @@ public abstract class AttributeValueGenerator extends ProcessorBase {
   public void setUpdateAction(UpdateAction action) {this.updateOption = action;}
   public Collection<Condition> getConditions() {return conditions;}
   public void setConditions(Collection<Condition> conditions) {this.conditions = conditions;}
-//  public UpdateAction getUpdateOption() {return updateOption;}
-//  public void setUpdateOption(UpdateAction action) {this.updateOption = action;}
-//  public boolean orderMatters() {return orderMatters;}
   public boolean isCaseSensitive() {return caseSensitive;}
   public void setCaseSensitive(boolean caseSensitive) {this.caseSensitive = caseSensitive;}
 
@@ -66,56 +53,75 @@ public abstract class AttributeValueGenerator extends ProcessorBase {
    * @param e
    * @return
    */
-  abstract ChangeValue generateValue(Entity e);
+  abstract ChangedValue generateValue(Entity e);
 
-  public ChangeValue getChangedValue(Entity e) {
-    ChangeValue newValue = generateValue(e);
-    trace("Target value for "+getAttribute()+ " is: " +newValue);
-    // if its an update, only include it if the value has changed:
-    // what happens if we are clearing an attribute???
-    if (newValue != null && e instanceof MatchedEntity) { //shouldn't be null, should be exception maybe? (AvgDoesNotApplyException...) issue #13
-      MatchedEntity me = (MatchedEntity) e;
-      Entity match = me.getMatch();
+  /**
+   * returns a value if:
+   * - this is a create, there is no existing vlaue
+   * - this is an update, the value needs changing.
+   * 
+   * For multi values updates, the returned values will be a complete replacement for the existing values (not just the changes)
+  **/
+  public ChangedValue getChangedValue(Entity e) {
+    trace("Generating change "+getName()+ " for "+e.toString()+", attribute "+getAttribute());
+    ChangedValue newValue = generateValue(e); 
 
-      Object currentValue = match.get(attribute);
-      if (!isUpdated(currentValue, newValue.getValue())) {
-        trace(" - No change required");
-        return null;
-      }
-      
-      trace("- replacing old value of: "+currentValue);
-    }
+    // null means this AVG is not applicable, do nothing
+    if (newValue == null)
+      return null;
     
+    // deal with updateaction and multiplicity....
+    if (e instanceof MatchedEntity) {
+//      trace("change identified as update");
+      MatchedEntity me = (MatchedEntity) e;
+      Object currentValue = me.getMatch().get(getAttribute());
+
+      if (newValue.value instanceof Collection) {
+        Collection<Object> newValues = new HashSet<Object>((Collection<?>) newValue.value);
+        Collection<Object> currentValues = new HashSet<Object>((Collection<?>) currentValue);
+
+        switch (getUpdateAction()) {
+          case OVERWRITE:
+            break;
+          case APPEND:
+            newValues.addAll(currentValues);
+            newValue = new ChangedValue(newValues);
+            break;
+          case REMOVE:
+            currentValues.removeAll(newValues);
+            newValue = new ChangedValue(currentValues);
+            break;
+          case CLEAR:
+            newValue = new ChangedValue(new HashSet<Object>());
+          default:
+            break;
+        }
+        if (currentValues.equals(newValues))
+          return null; // no change...
+        else {
+          trace("Setting values to "+newValue.toString());
+          return newValue;
+        }
+      }
+      else {
+        // is an update, single value - do nothing if:
+        // - new and current values are null
+        // - new and current values are the same
+        if ((currentValue == null && newValue.value == null) || (currentValue != null && currentValue.equals(newValue.value))) {
+          trace(" - No change required");
+          return null;
+        }
+      }
+    }
+
+    // its not an update, return the new value
     return newValue;
   }
 
-  /**
-   * Work out if the new value is any different from the old value
-   * 
-   * @param currentValue
-   * @param newValue
-   * @return
-   */
-  private boolean isUpdated(Object currentValue, Object newValue) {
-    if (currentValue != null) {
-      if (currentValue instanceof String)
-        if (caseSensitive) {
-          if (currentValue.toString().equals(newValue.toString()))
-            return false;
-        }
-        else
-          if (currentValue.toString().toLowerCase().equals(newValue.toString().toLowerCase()))
-            return false;
+  public static class ChangedValue {
 
-      if (currentValue instanceof Collection && newValue instanceof Collection) {
-        Collection<?> cv = (Collection<?>) currentValue;
-        Collection<?> nv = (Collection<?>) newValue;
-        if (cv.size() == nv.size() && cv.containsAll(nv))
-          return false;
-      }
-      // bitwise, numbers?
-    }
+    public final Object value;
 
-    return true;
+    ChangedValue(Object value) {this.value = value;}
   }
 }

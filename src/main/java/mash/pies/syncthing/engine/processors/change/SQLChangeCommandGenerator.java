@@ -5,16 +5,16 @@ import java.sql.SQLException;
 import java.util.Map;
 import mash.pies.syncthing.engine.processors.Entity;
 import mash.pies.syncthing.engine.processors.matcher.MatchedEntity;
-import mash.pies.syncthing.engine.processors.query.SQLQuery;
+import mash.pies.syncthing.engine.processors.query.SQLTableQuery;
 
-public class SQLChangeCommandGenerator extends ChangeCommandGenerator<SQLQuery> {
+public class SQLChangeCommandGenerator extends ChangeCommandGenerator<SQLTableQuery> {
 
-  public SQLChangeCommandGenerator(SQLQuery query, Map<String, String> params) {
+  public SQLChangeCommandGenerator(SQLTableQuery query, Map<String, String> params) {
     super(query, params);
   }
 
   @Override
-  public ChangeCommand buildCreateChange(Map<String, ChangeValue> changes)
+  public ChangeCommand buildCreateChange(Map<String, Object> changes)
     throws SQLException {
     String createQuery = "INSERT INTO " + getQuery().getTable() + " (";
     for (String field : changes.keySet()) createQuery += field + ",";
@@ -32,17 +32,13 @@ public class SQLChangeCommandGenerator extends ChangeCommandGenerator<SQLQuery> 
   }
 
   @Override
-  public ChangeCommand buildUpdateChange(
-    MatchedEntity me,
-    Map<String, ChangeValue> changes
-  )
-    throws SQLException {
+  public ChangeCommand buildUpdateChange(MatchedEntity me, Map<String, Object> changes) throws SQLException {
     if (changes.size() == 0) return null;
 
     String updateQuery = "UPDATE " + getQuery().getTable() + " SET ";
 
     for (String c : changes.keySet()) updateQuery +=
-      c + "='" + changes.get(c).getValue() + "',";
+      c + "='" + changes.get(c) + "',";
 
     updateQuery = updateQuery.substring(0, updateQuery.length() - 1);
 

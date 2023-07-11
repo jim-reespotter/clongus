@@ -1,10 +1,13 @@
 0203,Elvis,O'Presley,2019-04-24,,Cheese,taster
 3434,Buzz,Aldrin,,,Astronauts,asdfads
 765345,Keith,Chegwin,,,Cheese,thing
-33434,Buzz,Aldrin,,,Cheese,asdfads
+// ignore this line and the one below
+
+33434,Buzz,Aldrin,,,Maths,asdfads
 123462,Robinson,Crusoe,,,Luvvie,Marketing consultant
 55066,Janis,Joplin,,,Big brother,Singer
 4556234,John,Entwhistle,,,Maths,Bassist
 26448,Che,Guevara,,,Maths,Revolutionary
-6342,Chuck,Norris,,,Minecraft,Kung fu
-666,Luther,Van Dross,,,Cheese,Signer
+6342,Chuck,Norris,,,Maths,Kung fu
+## stuff to ignore too
+666,Luther,Van Dross,,,Maths,Signer

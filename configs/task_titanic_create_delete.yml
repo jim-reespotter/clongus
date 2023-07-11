@@ -1,0 +1,216 @@
+## Task to create new employees. Users will be created as soon as they are seen in HR, but are disabled.
+##
+## Other tasks will:
+## - Set account active
+## - Change name, cn, dn
+## - mamage groups
+## - mothball account when user leaves
+## - delete account 6 monhts later
+##
+---
+ADUserMaintenance:
+- connection: &HRFiles
+    !FileConnection
+    name: HR_files
+    description: file location for HR files
+    path: configs/configs
+
+- connection: &LDAP_RP
+    !LdapConnection
+    name: AD_LDAP
+    description: Connection to resspotter.home DC
+    url: ldaps://192.168.0.3
+    cert: xxx
+    credentials:
+      username: CN=sta_ldap,OU=testingStuff,DC=reespotter,DC=home
+      password: asdfasdfasdfadsf
+    baseDN: DC=reespotter,DC=home
+
+- query: &titanicers
+    !CsvQuery
+    name: titanicers
+    description: CSV file of titanicers
+    connection: *HRFiles
+    filename: Titanic_R.csv
+    headers: yes
+#    file: (fileName)
+    fields:
+    - name: pclass
+      type: caseInsensitiveString
+    - name: survived
+      type: caseSensitiveString
+    - name: residence
+      type: caseSensitiveString
+    - name: name
+      type: caseSensitiveString
+#      format: YYYY-mm-dd
+ #   - name: endDate
+ #     type: date
+ #     format: YYYY-mm-dd
+ #   - name: department
+ #     format: CaseInsensitiveString
+ #   - name: role
+ #     format: CaseInsensitiveString
+    ## optional means of describing - eg: firstname surname empID -> regex $1 $2 ($3)
+    ## something similar for all queries? Apps through for matchedQus?
+- query: &ADEmployees
+    !LdapObjectQuery
+    ## LDAP lookup
+    name: AD_users_titanicers
+    description: Read-write access to manage users in titanicers OU
+    connection: *LDAP_RP
+#    subOU: OU=test employees,OU=testingStuff
+    subOU: OU=testingStuff
+    filter: (&(objectClass=user)(!(sAMAccountName=STA_LDAP)))
+    scope: sub
+
+- task:
+    !SimpleTask
+    name: titanicers_create_HR_AD
+    description: create AD accounts for missing employees. Account will be disabled until start date
+  
+    ## source and target connections:
+    source: *titanicers
+    target: *ADEmployees
+
+    action: CREATE
+  
+    matchers:
+    - name: match_name
+      ## TO DO: add equals type
+      sourceSignature:
+        attributes: 
+        - name
+      targetSignature:
+        attributes: 
+        - displayName
+      ## TO DO: make this do something
+      condition: caseInsensitiveExactMatch
+#    - name: Match and last name
+#      sourceSignature:
+#        attributes:
+#        - firstname
+#        - surname
+#      targetSignature:
+#        attributes:
+#          - givenName
+#          - sn
+#      condition: caseInsensitiveExactMatch
+    ## should state source or target I think (source by default?)... so also targetAttributes
+    ## delimiter? default? set alt
+    ## TO DO: fails (NPE) if list empty...
+    filters:
+    #- name: left date hasnt happened yet
+    #  sourceAttributes: endDate
+    #  comparator: lessThan
+    #  value: today
+    - name: only create and update
+      actions:
+      - CREATE
+      - UPDATE
+  
+    ## these are the values for each attribute for the new target thing:
+    attributes:
+    - !RegexAttribute
+      attribute: distinguishedName
+      sources: 
+      - name
+      - name
+      # relative to connection, not query (so you can move up from wuery)
+      pattern: s/([a-zA-Z\w]+),[^\.]+\.\s\(?(\w+).*/CN=$2 $1,OU=titanic,OU=testingStuff/
+      conditions:
+      - CREATE
+      - UPDATE
+
+## mothball the account - move to ex employees
+#    - !RegexAttribute
+#      attribute: distinguishedName
+#      ## these are target attributes...
+#      sources: 
+#      - cn
+#      # relative to connection, not query (so you can move up from wuery)
+#      pattern: s/(.+)/CN=$1,OU=ex employees,OU=testingStuff/
+#      conditions:
+#      - REMOVE
+
+    - !LiteralAttribute
+      attribute: objectClass
+  #    action: append  !! TO DO: fix matching, multi things (there's an enum in ldaitive to copy maybe?) !!
+      values: 
+#      - user
+      - top
+      - person
+      - organizationalPerson
+      # possibly need a flag to say order does not matter?
+  #  - attribute: cn !! For AD, don't change CN, change DN instead !!
+  #    type: regex
+  #    sources: 
+  #      - firstname
+  #    - surname
+  #    - employeeID
+  #    pattern: s/(.*):(.*):(.*)/$1 $2 ($3)/
+  ##      delimiter: ':' default value!
+    - !RegexAttribute
+      attribute: displayName
+      sources: 
+      - name
+      - name
+      pattern: s/(.+)/$1/
+    - !CopyAttribute
+      attribute: sn
+      source: name
+    - !CopyAttribute
+      attribute: givenName
+      source: name
+      conditions:
+      - CREATE
+#    - !CopyAttribute
+#      attribute: employeeID
+#      source: employeeID
+#    - !RegexAttribute
+#      attribute: sAMAccountName
+#      sources: 
+#      - name
+#      pattern: s/(\w+)/$1/
+#  - attribute: bitField
+#    bit: 5
+#    bitValue: true
+#    - !RegexAttribute
+#      attribute: department
+#      sources: 
+#      - department
+#      pattern: s/(\w+)(\s?\w*)/ministry of $1$2/
+#      conditions:
+#      - CREATE
+#      - UPDATE
+## why doesn';t this work?
+#    - !RegexAttribute
+#      attribute: department
+#      sources: 
+#      - department
+#      pattern: s/(\w+)/out on arse/
+#      conditions:
+#      - REMOVE
+#    - !LiteralAttribute
+#      attribute: department
+#      values:
+#      - none
+#      ## not honouring this:
+#    #  updateOption: CLEAR
+#      conditions:
+#      - REMOVE
+
+    - !RandomAttribute
+      attribute: userPassword
+      conditions:
+      - CREATE
+      length: 12
+      characters:
+      - abcde
+      - ABCDE
+      - 12345
+#    - !BitwiseAttribute
+#      attribute: userAccountControl
+#      set:
+#        6: true
+        

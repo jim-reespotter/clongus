@@ -16,7 +16,7 @@ ADGroupMaintenance:
     cert: xxx
     credential:
       username: CN=sta_ldap,OU=testingStuff,DC=reespotter,DC=home
-      password: asdf345SDFg345SD
+      password: adsfadsfadsfasdf
     baseDN: DC=reespotter,DC=home
 
 #queries:

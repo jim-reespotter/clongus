@@ -20,7 +20,7 @@ public class StringSignature implements Signature {
 
     @Override
     public boolean equals(Object sig) {
-        if (sig instanceof StringSignature && ((Signature)sig).getSignature().toString().equals(signature))
+        if (sig instanceof StringSignature && ((StringSignature)sig).getSignature().equals(signature))
             return true;
         else
             return false;

@@ -15,6 +15,11 @@ public class RegexMatcherRule extends MatcherRule<RegexSignatureGenerator> {
   public RegexSignatureGenerator getTargetSignature() {return targetSignature;}
   public RegexMatcherRule withTargetSignature(RegexSignatureGenerator rsc) {this.targetSignature = rsc; return this;}
 
+  public boolean getCaseSensitive() {return getSourceSignature().getCaseSensitive();}
+  public void setCaseSensitive(boolean caseSensitive) {
+    getSourceSignature().setCaseSensitive(caseSensitive);
+    getTargetSignature().setCaseSensitive(caseSensitive);
+  }
   protected boolean isMatch(Signature sourceSig, Signature targetSig) {
     return sourceSig
         .getSignature()

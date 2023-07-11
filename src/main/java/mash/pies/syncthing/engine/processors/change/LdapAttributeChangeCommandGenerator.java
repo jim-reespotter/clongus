@@ -11,9 +11,9 @@ import org.ldaptive.AttributeModification.Type;
 import org.ldaptive.handler.ResultPredicate;
 
 import mash.pies.syncthing.engine.processors.Entity;
-import mash.pies.syncthing.engine.processors.change.valueGenerator.AttributeValueGenerator.Condition;
 import mash.pies.syncthing.engine.processors.matcher.MatchedEntity;
 import mash.pies.syncthing.engine.processors.query.LdapAttributeQuery;
+import mash.pies.syncthing.engine.processors.util.Condition;
 
 public class LdapAttributeChangeCommandGenerator extends ChangeCommandGenerator <LdapAttributeQuery> {
 
@@ -22,7 +22,7 @@ public class LdapAttributeChangeCommandGenerator extends ChangeCommandGenerator 
     }
 
     @Override
-    public ChangeCommand buildCreateChange(Map <String, ChangeValue> changes) {
+    public ChangeCommand buildCreateChange(Map <String, Object> changes) {
         return new LdapAttributeCreateChange (changes);
     }
 
@@ -30,7 +30,7 @@ public class LdapAttributeChangeCommandGenerator extends ChangeCommandGenerator 
 
         private ModifyRequest req;
 
-        LdapAttributeCreateChange (Map<String, ChangeValue> changeDetails) {
+        LdapAttributeCreateChange (Map<String, Object> changeDetails) {
             
             HashSet<AttributeModification> mods = new HashSet<AttributeModification>();
             for (String key : changeDetails.keySet()) {
@@ -62,20 +62,20 @@ public class LdapAttributeChangeCommandGenerator extends ChangeCommandGenerator 
     }
 
     @Override
-    public ChangeCommand buildUpdateChange(MatchedEntity me, Map <String, ChangeValue> changes) {
+    public ChangeCommand buildUpdateChange(MatchedEntity me, Map <String, Object> changes) {
         return new LdapAttributeRemoveChange (changes);
     }
 
     @Override
     public ChangeCommand buildRemoveChange(Entity e) {
-        return new LdapAttributeRemoveChange (tvg.generateChange(e,Condition.REMOVE));
+        return new LdapAttributeRemoveChange (generateChange(e,Condition.REMOVE));
     }
 
     class LdapAttributeRemoveChange extends LdapAttributeChange {
 
         private ModifyRequest req;
 
-        LdapAttributeRemoveChange (Map<String, ChangeValue> changeDetails) {
+        LdapAttributeRemoveChange (Map<String, Object> changeDetails) {
             
             HashSet<AttributeModification> mods = new HashSet<AttributeModification>();
             for (String key : changeDetails.keySet()) {

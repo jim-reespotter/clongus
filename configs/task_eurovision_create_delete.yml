@@ -1,0 +1,182 @@
+## Task to create new eurovision entrants
+---
+ADUserMaintenance:
+- connection: &HRFiles
+    !FileConnection
+    name: HR_files
+    description: file location for HR files
+    path: configs/
+
+- connection: &LDAP_RP
+    !LdapConnection
+    name: AD_LDAP
+    description: Connection to resspotter.home DC
+    url: ldaps://192.168.0.3
+    cert: xxx
+    credentials:
+      username: CN=sta_ldap,OU=testingStuff,DC=reespotter,DC=home
+      password: asdfasdfasdf
+    baseDN: DC=reespotter,DC=home
+
+- query: &HREurovision
+    !CsvQuery
+    name: HREurovision
+    description: CSV file of HREurovision
+    connection: *HRFiles
+    filename: configs/eurovision.csv
+    headers: yes
+    delimiter: \t
+    file: (fileName)
+    fields:
+    - name: year
+      type: caseInsensitiveString
+    - name: country
+      type: caseSensitiveString
+    - name: region
+      type: caseSensitiveString
+    - name: artist
+      format: CaseInsensitiveString
+    - name: song
+      format: CaseInsensitiveString
+    identifier:
+      attributes:
+      - artist
+      - song
+      pattern: /(.+):(.+)/$1 - $2/
+    ## optional means of describing - eg: firstname surname empID -> regex $1 $2 ($3)
+    ## something similar for all queries? Apps through for matchedQus?
+- query: &ADEurovision
+    !LdapObjectQuery
+    ## LDAP lookup
+    name: AD_users_eurovision
+    description: Read-write access to manage users in eurovision OU
+    connection: *LDAP_RP
+#    subOU: OU=test employees,OU=testingStuff
+    subOU: OU=testingStuff
+    filter: (&(objectClass=user)(!(sAMAccountName=STA_LDAP)))
+    scope: sub
+    identifier:
+      attributes:
+      - displayName
+
+- task:
+    !SimpleTask
+    name: emplyees_create_HR_AD
+    description: create AD accounts for missing employees. Account will be disabled until start date
+  
+    ## source and target connections:
+    source: *HREurovision
+    target: *ADEurovision
+
+    action: CREATE
+  
+    matchers:
+    - name: match_song
+      ## TO DO: add equals type
+      sourceSignature:
+        attributes: 
+        - song
+      targetSignature:
+        attributes: 
+        - sn
+      ## TO DO: make this do something
+      condition: caseInsensitiveExactMatch
+
+    ## should state source or target I think (source by default?)... so also targetAttributes
+    ## delimiter? default? set alt
+    ## TO DO: fails (NPE) if list empty...
+    filters:
+    #- name: left date hasnt happened yet
+    #  sourceAttributes: endDate
+    #  comparator: lessThan
+    #  value: today
+    - name: only create and update
+      actions:
+      - CREATE
+      - UPDATE
+  
+    ## these are the values for each attribute for the new target thing:
+    attributes:
+    - !RegexAttribute
+      attribute: distinguishedName
+      sources: 
+      - song
+      - artist
+      # relative to connection, not query (so you can move up from wuery)
+      pattern: s/(.+):(.*)/CN=$2 - $1,OU=eurovision,OU=testingStuff/
+      conditions:
+      - CREATE
+      - UPDATE
+    - !LiteralAttribute
+      attribute: objectClass
+  #    action: append  !! TO DO: fix matching, multi things (there's an enum in ldaitive to copy maybe?) !!
+      values: 
+      - user
+      - top
+      - person
+      - organizationalPerson
+      # possibly need a flag to say order does not matter?
+  #  - attribute: cn !! For AD, don't change CN, change DN instead !!
+  #    type: regex
+  #    sources: 
+  #      - firstname
+  #    - surname
+  #    - employeeID
+  #    pattern: s/(.*):(.*):(.*)/$1 $2 ($3)/
+  ##      delimiter: ':' default value!
+    - !RegexAttribute
+      attribute: displayName
+      sources: 
+      - song
+      - artist
+      pattern: s/(.*):(.*)/$2 - $1/
+    - !CopyAttribute
+      attribute: sn
+      source: song
+    - !CopyAttribute
+      attribute: givenName
+      source: artist
+      conditions:
+      - CREATE
+ 
+    - !RegexAttribute
+      attribute: sAMAccountName
+      sources: 
+      - song
+      - artist
+      pattern: s/(\w[2])\w+:(\w[2])\w*:(\w).+/$1$2/
+#  - attribute: bitField
+#    bit: 5
+#    bitValue: true
+
+## why doesn';t this work?
+#    - !RegexAttribute
+#      attribute: department
+#      sources: 
+#      - department
+#      pattern: s/(\w+)/out on arse/
+#      conditions:
+#      - REMOVE
+#    - !LiteralAttribute
+#      attribute: department
+#      values:
+#      - none
+#      ## not honouring this:
+#    #  updateOption: CLEAR
+#      conditions:
+#      - REMOVE
+
+    - !RandomAttribute
+      attribute: userPassword
+      conditions:
+      - CREATE
+      length: 12
+      characters:
+      - abcde
+      - ABCDE
+      - 12345
+#    - !BitwiseAttribute
+#      attribute: userAccountControl
+#      set:
+#        6: true
+        

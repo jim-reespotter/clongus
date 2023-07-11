@@ -99,12 +99,31 @@ public abstract class MatcherRule<T extends SignatureGenerator> extends Processo
     while (srcIter.hasNext()) {
       Signature srcSig = srcIter.next();
 
+      if (targetSigMap.containsKey(srcSig)) {
+        debug("Found unique match: " + srcSig.getSignature());
+        sourceEntities.remove(sourceSigMap.get(srcSig));
+          targetEntities.remove(targetSigMap.get(srcSig));
+
+          // add to matched:
+          matches.add(
+              new MatchedEntity(
+                  sourceSigMap.get(srcSig),
+                  targetSigMap.get(srcSig)
+              )
+          );
+
+          // remove from maps:
+          srcIter.remove();
+          targetSigMap.remove(srcSig);
+      }
+/*
+      //threads?
       Iterator<Signature> tgtIter = targetSigMap.keySet().iterator();
       while (tgtIter.hasNext()) {
         Signature tgtSig = tgtIter.next();
 
         if (isMatch(srcSig, tgtSig)) {
-          trace("Found unique match: " + srcSig.getSignature());
+          debug("Found unique match: " + srcSig.getSignature());
 
           // remove from unmatched sets:
           sourceEntities.remove(sourceSigMap.get(srcSig));
@@ -121,9 +140,8 @@ public abstract class MatcherRule<T extends SignatureGenerator> extends Processo
           tgtIter.remove();
         }
       }
+*/
     }
-
-    
 
     return matches;
   }

@@ -39,7 +39,7 @@ public class MatchQuery extends Query {
         Collection <Entity> targetData = target.execute(params);
 
         Set <MatchedEntity> matchedEntities = new Matcher(matchers).match(sourceData, targetData);
-        trace("Found "+matchedEntities.size()+" matches");
+        debug("Found "+matchedEntities.size()+" matches");
         
         return new HashSet<Entity>(matchedEntities);
     }

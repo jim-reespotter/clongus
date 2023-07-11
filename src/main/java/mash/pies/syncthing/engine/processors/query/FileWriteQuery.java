@@ -1,11 +1,15 @@
 package mash.pies.syncthing.engine.processors.query;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.regex.Pattern;
 
 import mash.pies.syncthing.engine.processors.Entity;
 import mash.pies.syncthing.engine.processors.change.ChangeCommandGenerator;
@@ -43,7 +47,8 @@ public class FileWriteQuery extends ConnectionQuery {
     public void setConnection(FileConnection connection) {this.connection = connection;}
   
     private String filename;
-    public boolean append = true;
+    private boolean append = true;
+    private String firstLine;
     private String createPattern;
     private String updatePattern;
     private String removePattern;
@@ -54,6 +59,8 @@ public class FileWriteQuery extends ConnectionQuery {
     public void setFilename(String filename) {this.filename = filename;}
     public boolean getAppend() {return append;}
     public void setAppend(boolean append) {this.append = append;}
+    public String getFirstLine() {return firstLine;}
+    public void setFirstLine(String firstLine) {this.firstLine = firstLine;}
     public List <Field> getFields() {return fields;}
     public void setFields(List<Field> fields) {this.fields = fields;}
     public String getDelimiter() {return this.delimiter;}
@@ -64,6 +71,9 @@ public class FileWriteQuery extends ConnectionQuery {
     public void setUpdatePattern(String pattern) {this.updatePattern = pattern;}
     public String getRemovePattern() {return removePattern;}
     public void setRemovePattern(String pattern) {this.removePattern = pattern;}
+
+
+    private PrintWriter pw;
 
     /** does nothing */
     @Override
@@ -78,4 +88,23 @@ public class FileWriteQuery extends ConnectionQuery {
     protected ChangeCommandGenerator<?> getChangeCommandGenerator(Map<String, String> params) {
         return new FileWriteChangeCommandGenerator(this, params);
     }    
+
+    public PrintWriter getPrintWriter() throws IOException {
+        if (pw == null) {
+            FileOutputStream fis = new FileOutputStream(
+                                      new File(getConnection().getPath()+"/"+getFilename()),
+                                      getAppend()
+                              );
+            pw = new PrintWriter(fis, true, StandardCharsets.UTF_8);
+            if (firstLine != null)
+                pw.println(firstLine);
+        }
+        return pw;
+    }
+
+    @Override
+    public void close() {
+        if (pw != null)
+            pw.close();
+    }
 }

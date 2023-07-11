@@ -29,4 +29,10 @@ public class ReadWriteQuery extends Query {
     protected ChangeCommandGenerator<?> getChangeCommandGenerator(Map<String, String> params) {        
         return write.getChangeCommandGenerator(params);
     }
+
+    @Override
+    public void close() {
+        read.close();
+        write.close();
+    }
 }

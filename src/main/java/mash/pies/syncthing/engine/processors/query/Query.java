@@ -31,5 +31,8 @@ public abstract class Query extends ProcessorBase {
     return ccg;
   }
 
-  
+  /**
+   * Called at end of SimpleTask, overwrite and close any connections here if you need to.
+   */
+  public void close() {}
 }

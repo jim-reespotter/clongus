@@ -3,12 +3,9 @@ package mash.pies.syncthing.engine.processors.connection;
 import java.io.File;
 import java.io.FileNotFoundException;
 
-import org.springframework.data.mongodb.core.mapping.Document;
-
 /**
  * A connection to a local filesystem
  */
-//@Document(collection="connection")
 public class FileConnection extends Connection {
 
     private String path;

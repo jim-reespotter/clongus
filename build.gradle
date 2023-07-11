@@ -10,17 +10,38 @@ group = 'mash.pies.syncthing'
 version = '0.0.1-SNAPSHOT'
 sourceCompatibility = '11'
 
-
 repositories {
 	mavenCentral()
 }
 
+/*
+publishing {
+	publications {
+        library(MavenPublication) {
+            from components.java
+        }
+    }
+    repositories {
+        maven {
+            url "https://gitlab.com/api/v4/projects/40728366/packages/maven"
+            credentials(HttpHeaderCredentials) {
+                name = "Deploy-Token"
+                value = clongusDeployToken // the token is stored in ~/.gradle/gradle.properties
+            }
+            authentication {
+                header(HttpHeaderAuthentication)
+            }
+        }
+    }
+}
+*/
 dependencies {
 
 	implementation 'org.yaml:snakeyaml:1.30'
 	implementation 'org.ldaptive:ldaptive:2.1.0'
+
 	implementation 'org.mariadb.jdbc:mariadb-java-client:3.0.4'
-	implementation 'org.springframework.data:spring-data-mongodb:3.4.0'
+//	implementation 'org.springframework.data:spring-data-mongodb:3.4.0'
 	implementation 'com.fasterxml.jackson.core:jackson-annotations'
 
     implementation 'ch.qos.logback:logback-core'
@@ -30,7 +51,9 @@ dependencies {
 	implementation 'com.google.api-client:google-api-client:2.0.0'
 	implementation 'com.google.auth:google-auth-library-oauth2-http:1.10.0'
 
-    implementation 'com.google.apis:google-api-services-admin-directory:directory_v1-rev62-1.21.0'
+	implementation 'org.codehaus.groovy:groovy-all:3.0.13'
+
+    //implementation 'com.google.apis:google-api-services-admin-directory:directory_v1-rev62-1.21.0'
 
 	testImplementation 'org.junit.jupiter:junit-jupiter-engine'
 	testImplementation 'junit:junit'
@@ -40,6 +63,14 @@ dependencies {
 	testImplementation 'org.springframework.boot:spring-boot-starter-data-ldap'
 	testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa'
 	testImplementation 'com.h2database:h2'
+}
+
+tasks.named("bootJar") {
+	manifest {
+		attributes 'Main-Class': 'org.springframework.boot.loader.PropertiesLauncher'		
+		attributes 'Start-Class': 'mash.pies.syncthing.engine.SyncRunner'
+		attributes 'Loader-Path': '.'
+	}
 }
 
 tasks.named('test') {

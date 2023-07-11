@@ -6,9 +6,9 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import ch.qos.logback.classic.Level;
 import mash.pies.syncthing.engine.processors.Entity;
 import mash.pies.syncthing.engine.processors.LogBase;
-import mash.pies.syncthing.engine.processors.ProcessorBase;
 
 /**
  * Processes the list of matchers in order against the source and target
@@ -37,6 +37,15 @@ public class Matcher extends LogBase {
       debug("made "+matchedEntities.size()+" matches, "+sourceEntities.size()+" source, "+targetEntities.size()+" targets remaining");
     }
 
+    debug("Finished matching - "+matches.size()+" entities matched, leaving "+sourceEntities.size()+" sources and "+targetEntities.size()+" targets.");
+    
+    if (getLogger().getLevel() == Level.TRACE) {
+      for (Entity src : sourceEntities)
+        trace("Unmathced source: "+src.toString());
+      for (Entity target : targetEntities)  
+        trace("unmatched target: "+target.toString());
+    }
+      
     return matches;
   }
 }
